@@ -1,0 +1,33 @@
+{
+  "@context": "https://w3id.org/badges/v1",
+  "type": "Assertion",
+  "id": "https://certs.djpai.dev/assertions/19924d25-4b74-4240-957a-cba69a666177",
+  "badge": {
+    "id": "https://certs.djpai.dev/badges/mistral-studio-partner-learning-certificate",
+    "type": "BadgeClass",
+    "name": "Mistral Studio Partner Learning Certificate",
+    "description": "Credential issued for Mistral Studio Partner Learning Certificate. Original upstream certificate linked in evidence.",
+    "image": "https://certs.djpai.dev/badges/images/mistral_badge-1935ca73.png",
+    "criteria": {
+      "narrative": "Upstream certificate was validated at time of issuance. This badge acts as a proxy credential, cryptographically linking to the original issuer."
+    },
+    "issuer": {
+      "id": "https://certs.djpai.dev/.well-known/issuer.json",
+      "type": "Organization",
+      "name": "Mistral AI",
+      "url": "https://certs.djpai.dev"
+    }
+  },
+  "recipient": {
+    "type": "email",
+    "identity": "sha256$5821a508838c00def9952bf7c6016d8ff338d43f3ab7de8d02834d7a45b68a94"
+  },
+  "issuedOn": "2026-11-17T21:43:33Z",
+  "evidence": [
+    {
+      "id": "https://learn.mistral.ai/home/certificate/rdh8v2bdqk",
+      "narrative": "Original upstream certificate from Mistral AI"
+    }
+  ],
+  "expires": "2027-12-31T23:59:59Z"
+}

@@ -15,7 +15,7 @@
     ],
     "name": "Mistral AI"
   },
-  "validFrom": "2026-11-17T21:19:43.026239Z",
+  "validFrom": "2026-11-17T21:19:43Z",
   "credentialSubject": {
     "id": "mailto:dhananjaimvpai@gmail.com",
     "type": [
@@ -48,9 +48,9 @@
   "proof": {
     "type": "DataIntegrityProof",
     "cryptosuite": "ed25519-2020",
-    "created": "2026-11-17T21:19:43.083895Z",
+    "created": "2026-11-17T21:26:43Z",
     "verificationMethod": "did:web:certs.djpai.dev#key-1",
     "proofPurpose": "assertionMethod",
-    "proofValue": "V7We1UUvJdaKqJZiJtlqkRVNwmd9/y4+QIkBzR9t9FYVoKlVgEB0R1sEsJnWIDzIzfmCYELXoEScfXkVE30RCg=="
+    "proofValue": "tdYccxvLiAPxko/6GyUYg19gfen87af8fiAGGc1/hvQAeZBgOEjEFEau3MjVAwT54dhCXqNjNnnFDX9Kj8DaBA=="
   }
 }

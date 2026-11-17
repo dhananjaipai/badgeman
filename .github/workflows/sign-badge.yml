@@ -27,12 +27,15 @@ on:
 jobs:
   generate-and-sign:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -191,36 +194,38 @@ jobs:
           SIGN_SCRIPT
 
       - name: Commit and push to gh-pages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Configure git
-          git config user.name "github-actions"
-          git config user.email "actions@github.com"
+          # Configure git with token authentication
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
 
-          # Checkout gh-pages branch (or create it)
-          git fetch origin gh-pages 2>/dev/null || echo "gh-pages branch doesn't exist yet"
-          git checkout -B gh-pages origin/gh-pages 2>/dev/null || git checkout -B gh-pages
+          # Checkout gh-pages branch
+          git fetch origin gh-pages
+          git checkout gh-pages
 
-          # Ensure we're on gh-pages
-          git switch gh-pages 2>/dev/null || git checkout gh-pages
+          # Ensure directories exist
+          mkdir -p .well-known badges/images
 
-          # Copy badges, images, and .well-known from main
-          git show main:badges/ 2>/dev/null || mkdir -p badges
-          cp -r badges/ . 2>/dev/null || true
+          # Copy files from main branch
+          git show main:.well-known/did.json > .well-known/did.json
+          git show main:.nojekyll > .nojekyll 2>/dev/null || touch .nojekyll
 
-          mkdir -p .well-known
-          cp -r .well-known/ . 2>/dev/null || git show main:.well-known/ | tar -x 2>/dev/null || true
+          # Copy the generated badge files
+          mkdir -p badges/images
+          if [ -f badges/*.json ]; then
+            cp badges/*.json . 2>/dev/null || true
+          fi
 
-          cp .nojekyll . 2>/dev/null || git show main:.nojekyll > .nojekyll
+          # Stage all changes
+          git add .well-known/did.json .nojekyll badges/
 
-          # Stage changes
-          git add .well-known/ badges/ .nojekyll
-
-          # Commit (use --allow-empty if no changes)
-          git commit --allow-empty -m "Deploy signed badge and DID document"
+          # Create commit
+          git commit -m "Deploy signed badge and DID document" || echo "No changes to commit"
 
           # Push to gh-pages
           git push origin gh-pages
-          echo "✅ Pushed to gh-pages branch"
 
       - name: Create workflow summary
         if: always()
@@ -260,10 +265,3 @@ jobs:
           echo "### Verification" >> $GITHUB_STEP_SUMMARY
           echo "Public key: [\`certs.djpai.dev/.well-known/did.json\`](https://certs.djpai.dev/.well-known/did.json)" >> $GITHUB_STEP_SUMMARY
           echo "Cryptosuite: **Ed25519 Data Integrity Proof**" >> $GITHUB_STEP_SUMMARY
-          echo "" >> $GITHUB_STEP_SUMMARY
-
-          echo "### JSON Contents" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
-          curl -s "${BADGE_URL}" | python3 -m json.tool | head -50 >> $GITHUB_STEP_SUMMARY
-          echo "... (truncated)" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

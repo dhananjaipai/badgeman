@@ -1,0 +1,269 @@
+name: Sign and Deploy Badge
+
+on:
+  workflow_dispatch:
+    inputs:
+      upstream_url:
+        description: "URL to upstream certificate (Microsoft Learn, Mistral, etc.)"
+        required: true
+        type: string
+      image_url:
+        description: "URL to badge image (PNG/SVG)"
+        required: true
+        type: string
+      issuer_name:
+        description: "Issuing organization name (e.g., Microsoft Learn, Mistral AI)"
+        required: true
+        type: string
+      achievement_name:
+        description: "Name of the achievement/certification"
+        required: true
+        type: string
+      expiry_date:
+        description: "Optional expiration date (dd/mm/yyyy format, leave empty for no expiry)"
+        required: false
+        type: string
+
+jobs:
+  generate-and-sign:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install cryptography
+
+      - name: Download badge image
+        run: |
+          mkdir -p /tmp/badge_input
+          cd /tmp/badge_input
+
+          # Download image
+          echo "📥 Downloading image from: ${{ github.event.inputs.image_url }}"
+          curl -L -o badge_original "${{ github.event.inputs.image_url }}"
+
+          # Detect format and get extension
+          file_type=$(file -b badge_original | head -c 20)
+          if [[ "$file_type" =~ PNG ]]; then
+            ext="png"
+          elif [[ "$file_type" =~ JPEG ]]; then
+            ext="jpg"
+          elif [[ "$file_type" =~ SVG ]]; then
+            ext="svg"
+          else
+            # Fallback: try to extract from URL
+            url_path="${{ github.event.inputs.image_url }}"
+            ext="${url_path##*.}"
+            ext="${ext%%\?*}"  # Remove query params
+            [ -z "$ext" ] && ext="png"  # Default to png
+          fi
+
+          # Hash URL for deterministic filename
+          url_hash=$(echo -n "${{ github.event.inputs.image_url }}" | md5sum | cut -c1-8)
+          image_filename="badge-${url_hash}.${ext}"
+
+          # Rename to final name
+          mv badge_original "$image_filename"
+
+          # Save for next step
+          echo "IMAGE_PATH=/tmp/badge_input/$image_filename" >> $GITHUB_ENV
+          echo "IMAGE_FILENAME=$image_filename" >> $GITHUB_ENV
+          echo "✅ Image downloaded as: $image_filename"
+
+      - name: Generate badge
+        env:
+          PERSONAL_EMAIL: ${{ secrets.PERSONAL_EMAIL }}
+        run: |
+          if [ -z "$PERSONAL_EMAIL" ]; then
+            echo "❌ Error: PERSONAL_EMAIL secret not set!"
+            exit 1
+          fi
+
+          expiry_arg=""
+          if [ -n "${{ github.event.inputs.expiry_date }}" ]; then
+            expiry_arg "${{ github.event.inputs.expiry_date }}"
+          fi
+
+          python3 badge_generator.py \
+            "${{ github.event.inputs.upstream_url }}" \
+            "${{ env.IMAGE_PATH }}" \
+            "${{ github.event.inputs.issuer_name }}" \
+            "${{ github.event.inputs.achievement_name }}" \
+            "$PERSONAL_EMAIL" \
+            $expiry_arg
+
+      - name: Sign credential
+        env:
+          BADGE_SIGNING_KEY: ${{ secrets.BADGE_SIGNING_KEY }}
+        run: |
+          python3 << 'SIGN_SCRIPT'
+          import json
+          import os
+          import glob
+          import sys
+          from cryptography.hazmat.primitives.asymmetric import ed25519
+          from cryptography.hazmat.primitives import serialization
+          from cryptography.hazmat.backends import default_backend
+          from datetime import datetime, timezone
+          import base64
+
+          # Load private key from GitHub Secret
+          private_key_pem = os.environ.get('BADGE_SIGNING_KEY')
+          if not private_key_pem:
+              print("❌ Error: BADGE_SIGNING_KEY secret not set!", file=sys.stderr)
+              sys.exit(1)
+
+          try:
+              private_key = serialization.load_pem_private_key(
+                  private_key_pem.encode(),
+                  password=None,
+                  backend=default_backend()
+              )
+          except Exception as e:
+              print(f"❌ Error loading private key: {e}", file=sys.stderr)
+              sys.exit(1)
+
+          # Find the generated badge file (most recently created)
+          badge_files = glob.glob("badges/*.json")
+          if not badge_files:
+              print("❌ Error: No badge JSON generated!", file=sys.stderr)
+              sys.exit(1)
+
+          badge_file = max(badge_files, key=os.path.getctime)
+          print(f"🔑 Signing: {badge_file}")
+
+          # Load unsigned credential
+          with open(badge_file, 'r') as f:
+              credential = json.load(f)
+
+          # Create Data Integrity Proof (JWS)
+          proof_config = {
+              "type": "DataIntegrityProof",
+              "cryptosuite": "ed25519-2020",
+              "created": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+              "verificationMethod": "did:web:certs.djpai.dev#key-1",
+              "proofPurpose": "assertionMethod"
+          }
+
+          # Sign the credential JSON + proof config
+          canonical_json = json.dumps(credential, separators=(',', ':'), sort_keys=True)
+          proof_config_json = json.dumps(proof_config, separators=(',', ':'), sort_keys=True)
+
+          # Combine for signing
+          signing_input = canonical_json + proof_config_json
+          signature = private_key.sign(signing_input.encode())
+
+          # Create proof object
+          proof = {
+              **proof_config,
+              "proofValue": base64.b64encode(signature).decode('ascii')
+          }
+
+          # Append proof to credential
+          credential['proof'] = proof
+
+          # Save signed credential
+          with open(badge_file, 'w') as f:
+              json.dump(credential, f, indent=2)
+
+          # Extract UUID for later reference
+          credential_uuid = credential.get('id', '').split(':')[-1]
+          print(f"✅ Credential signed!")
+          print(f"   UUID: {credential_uuid}")
+          print(f"   Proof: {proof['type']} ({proof['cryptosuite']})")
+          print(f"   Badge file: {badge_file}")
+
+          # Save for GitHub output
+          with open(os.environ.get('GITHUB_ENV', '/dev/null'), 'a') as f:
+              f.write(f"BADGE_FILE={badge_file}\n")
+              f.write(f"CREDENTIAL_UUID={credential_uuid}\n")
+          SIGN_SCRIPT
+
+      - name: Commit and push to gh-pages
+        run: |
+          # Configure git
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+          # Checkout gh-pages branch (or create it)
+          git fetch origin gh-pages 2>/dev/null || echo "gh-pages branch doesn't exist yet"
+          git checkout -B gh-pages origin/gh-pages 2>/dev/null || git checkout -B gh-pages
+
+          # Ensure we're on gh-pages
+          git switch gh-pages 2>/dev/null || git checkout gh-pages
+
+          # Copy badges, images, and .well-known from main
+          git show main:badges/ 2>/dev/null || mkdir -p badges
+          cp -r badges/ . 2>/dev/null || true
+
+          mkdir -p .well-known
+          cp -r .well-known/ . 2>/dev/null || git show main:.well-known/ | tar -x 2>/dev/null || true
+
+          cp .nojekyll . 2>/dev/null || git show main:.nojekyll > .nojekyll
+
+          # Stage changes
+          git add .well-known/ badges/ .nojekyll
+
+          # Commit (use --allow-empty if no changes)
+          git commit --allow-empty -m "Deploy signed badge and DID document"
+
+          # Push to gh-pages
+          git push origin gh-pages
+          echo "✅ Pushed to gh-pages branch"
+
+      - name: Create workflow summary
+        if: always()
+        run: |
+          echo "## 🎓 Badge Generated and Signed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **Credential created with Ed25519 signature proof**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          BADGE_URL="https://certs.djpai.dev/badges/${CREDENTIAL_UUID}.json"
+          IMAGE_URL="https://certs.djpai.dev/badges/images/${IMAGE_FILENAME}"
+
+          echo "### Download & Upload to Credly" >> $GITHUB_STEP_SUMMARY
+          echo "📥 **Badge JSON**: [\`${CREDENTIAL_UUID}.json\`](${BADGE_URL})" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Right-click link above and select **Save link as** (or use \`curl\`)" >> $GITHUB_STEP_SUMMARY
+          echo "2. Go to [Credly Badge Wallet](https://credly.com)" >> $GITHUB_STEP_SUMMARY
+          echo "3. Select **Other** tab → **+ Upload Other Badges**" >> $GITHUB_STEP_SUMMARY
+          echo "4. Upload the downloaded JSON file" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Badge Details" >> $GITHUB_STEP_SUMMARY
+          echo "| Field | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|-------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Credential ID** | \`${CREDENTIAL_UUID}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Issuer** | \`did:web:certs.djpai.dev\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Issuer Name** | ${{ github.event.inputs.issuer_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Achievement** | ${{ github.event.inputs.achievement_name }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Image** | ![${{ github.event.inputs.achievement_name }}](${IMAGE_URL}) |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Upstream Evidence** | [${{ github.event.inputs.upstream_url }}](${{ github.event.inputs.upstream_url }}) |" >> $GITHUB_STEP_SUMMARY
+          if [ -n "${{ github.event.inputs.expiry_date }}" ]; then
+            echo "| **Expires** | ${{ github.event.inputs.expiry_date }} |" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### Verification" >> $GITHUB_STEP_SUMMARY
+          echo "Public key: [\`certs.djpai.dev/.well-known/did.json\`](https://certs.djpai.dev/.well-known/did.json)" >> $GITHUB_STEP_SUMMARY
+          echo "Cryptosuite: **Ed25519 Data Integrity Proof**" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+
+          echo "### JSON Contents" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          curl -s "${BADGE_URL}" | python3 -m json.tool | head -50 >> $GITHUB_STEP_SUMMARY
+          echo "... (truncated)" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY

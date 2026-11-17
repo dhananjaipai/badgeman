@@ -1,0 +1,22 @@
+# Private cryptographic keys - NEVER commit!
+keys/badge_private_key.pem
+keys/*.key
+
+# Environment
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak

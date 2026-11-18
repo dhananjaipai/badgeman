@@ -6,7 +6,7 @@
       "id": "did:web:certs.djpai.dev#key-1",
       "type": "Ed25519VerificationKey2020",
       "controller": "did:web:certs.djpai.dev",
-      "publicKeyMultibase": "z5uaqciaaymni5fp42jq6ga3kzwqynzcnyzlxvcpemrvnz4umtt3p5jsxy4======"
+      "publicKeyMultibase": "z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL"
     }
   ],
   "authentication": [

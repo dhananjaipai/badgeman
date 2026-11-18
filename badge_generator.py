@@ -80,6 +80,7 @@ def generate_badge(
             "type": ["Profile"],
             "name": issuer_name
         },
+        "validFrom": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         "issuanceDate": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
     }
     

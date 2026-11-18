@@ -1,41 +1,64 @@
 #!/usr/bin/env python3
 """
-Unified Badge Generator - OB2.0 and OB3.0
-Generates both Open Badges 2.0 (IMS Global) and 3.0 (W3C Verifiable Credentials)
+Unified Badge Generator - Generates & signs both OB2.0 and OB3.0
+Single script for complete badge creation workflow
 """
 
 import json
 import uuid
 import sys
 import hashlib
+import ssl
+import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
 
+ssl._create_default_https_context = ssl._create_unverified_context
 
-def generate_ob2_assertion(email: str, badge_class_url: str, issuer_url: str) -> dict:
-    """Generate OB2.0 assertion with unsalted email hash."""
+try:
+    from cryptography.hazmat.primitives import serialization
+    from cryptography.hazmat.primitives.asymmetric import ed25519
+    from cryptography.hazmat.backends import default_backend
+    from pyld import jsonld
+    import base58
+    HAS_OB3_DEPS = True
+except ImportError:
+    HAS_OB3_DEPS = False
+
+
+_CONTEXT_CACHE = {}
+
+
+def custom_document_loader(url, options=None):
+    """Fetch and cache JSON-LD contexts."""
+    if url not in _CONTEXT_CACHE:
+        req = urllib.request.Request(url, headers={"Accept": "application/ld+json, application/json"})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            _CONTEXT_CACHE[url] = json.loads(response.read().decode("utf-8"))
+    return {"contextUrl": None, "documentUrl": url, "document": _CONTEXT_CACHE[url]}
+
+
+def generate_ob2(email: str, issuer_url: str) -> dict:
+    """Generate OB2.0 assertion."""
     email_lower = email.lower()
     email_hash = hashlib.sha256(email_lower.encode()).hexdigest()
     
     return {
         "@context": "https://w3id.org/openbadges/v2",
-        "id": f"https://{Path.cwd().name}/assertions/{uuid.uuid4()}.json",
         "type": "Assertion",
-        "badge": badge_class_url,
+        "badge": "https://certs.djpai.dev/badges/badge.json",
         "issuedOn": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         "recipient": {
             "type": "email",
             "hashed": True,
             "identity": f"sha256${email_hash}"
         },
-        "verification": {
-            "type": "hosted"
-        }
+        "verification": {"type": "hosted"}
     }
 
 
-def generate_ob3_credential(email: str, achievement_name: str, issuer_name: str, issuer_did: str, upstream_url: str, image_url: str) -> dict:
-    """Generate OB3.0 credential with did:key."""
+def generate_ob3(email: str, achievement_name: str, issuer_name: str, issuer_did: str, upstream_url: str, image_url: str) -> dict:
+    """Generate OB3.0 credential (unsigned)."""
     credential_id = str(uuid.uuid4())
     
     return {
@@ -61,30 +84,76 @@ def generate_ob3_credential(email: str, achievement_name: str, issuer_name: str,
                 "type": ["Achievement"],
                 "name": achievement_name,
                 "description": f"Achievement: {achievement_name}",
-                "image": {
-                    "id": image_url,
-                    "type": "Image"
-                },
-                "criteria": {
-                    "narrative": "Upstream certificate was validated at time of issuance."
-                }
+                "image": {"id": image_url, "type": "Image"},
+                "criteria": {"narrative": "Upstream certificate was validated at time of issuance."}
             }
         },
-        "evidence": [
-            {
-                "id": upstream_url,
-                "type": ["Evidence"],
-                "name": f"Original Upstream {issuer_name} Certificate"
-            }
-        ]
+        "evidence": [{
+            "id": upstream_url,
+            "type": ["Evidence"],
+            "name": f"Original Upstream {issuer_name} Certificate"
+        }]
     }
+
+
+def sign_ob3(credential: dict, private_key_path: str) -> dict:
+    """Sign OB3.0 credential with Ed25519."""
+    if not HAS_OB3_DEPS:
+        raise ImportError("OB3.0 signing requires: cryptography, pyld, base58")
+    
+    with open(private_key_path, 'rb') as f:
+        private_key = serialization.load_pem_private_key(f.read(), password=None, backend=default_backend())
+    
+    if not isinstance(private_key, ed25519.Ed25519PrivateKey):
+        raise ValueError("Private key must be Ed25519")
+    
+    credential_without_proof = {k: v for k, v in credential.items() if k != 'proof'}
+    
+    issuer = credential_without_proof["issuer"]
+    issuer_id = issuer["id"] if isinstance(issuer, dict) else issuer
+    
+    if issuer_id.startswith("did:key:"):
+        verification_method = issuer_id + "#" + issuer_id.split(":")[-1]
+    else:
+        verification_method = issuer_id + "#key-1"
+    
+    proof_options = {
+        "@context": credential_without_proof["@context"],
+        "type": "DataIntegrityProof",
+        "cryptosuite": "eddsa-rdfc-2022",
+        "created": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+        "verificationMethod": verification_method,
+        "proofPurpose": "assertionMethod",
+    }
+    
+    jsonld_opts = {
+        "algorithm": "URDNA2015",
+        "format": "application/n-quads",
+        "documentLoader": custom_document_loader
+    }
+    
+    doc_nquads = jsonld.normalize(credential_without_proof, jsonld_opts)
+    proof_nquads = jsonld.normalize(proof_options, jsonld_opts)
+    
+    proof_hash = hashlib.sha256(proof_nquads.encode("utf-8")).digest()
+    doc_hash = hashlib.sha256(doc_nquads.encode("utf-8")).digest()
+    hash_data = proof_hash + doc_hash
+    
+    signature_bytes = private_key.sign(hash_data)
+    proof_value = "z" + base58.b58encode(signature_bytes).decode('ascii')
+    
+    proof_options_for_credential = {k: v for k, v in proof_options.items() if k != '@context'}
+    proof_options_for_credential["proofValue"] = proof_value
+    credential_without_proof["proof"] = [proof_options_for_credential]
+    
+    return credential_without_proof
 
 
 def main():
     if len(sys.argv) < 6:
-        print("Usage: badge_generator.py <email> <achievement_name> <issuer_name> <upstream_url> <image_url> [issuer_did]")
+        print("Usage: badge_generator.py <email> <achievement_name> <issuer_name> <upstream_url> <image_url> [issuer_did] [private_key_path]")
         print("\nExample:")
-        print('  python3 badge_generator.py "user@example.com" "Azure Admin" "Microsoft Learn" "https://learn.microsoft.com/..." "https://certs.djpai.dev/images/badge.png"')
+        print('  python3 badge_generator.py "user@example.com" "Azure Admin" "Microsoft Learn" "https://..." "https://certs.djpai.dev/images/badge.png"')
         sys.exit(1)
     
     email = sys.argv[1]
@@ -93,30 +162,37 @@ def main():
     upstream_url = sys.argv[4]
     image_url = sys.argv[5]
     issuer_did = sys.argv[6] if len(sys.argv) > 6 else "did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL"
+    private_key_path = sys.argv[7] if len(sys.argv) > 7 else "keys/badge_private_key.pem"
     
     try:
-        # Generate both formats
-        ob2 = generate_ob2_assertion(email, f"https://certs.djpai.dev/badges/{issuer_name.lower().replace(' ', '-')}.json", "https://certs.djpai.dev/.well-known/issuer.json")
-        ob3 = generate_ob3_credential(email, achievement_name, issuer_name, issuer_did, upstream_url, image_url)
+        # Generate OB2.0
+        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json")
+        ob2_id = str(uuid.uuid4())
+        ob2["id"] = f"https://certs.djpai.dev/assertions/{ob2_id}.json"
         
-        # Save OB2.0
-        ob2_file = f"assertions/{uuid.uuid4()}.json"
         Path("assertions").mkdir(exist_ok=True)
+        ob2_file = f"assertions/{ob2_id}.json"
         with open(ob2_file, 'w') as f:
             json.dump(ob2, f, indent=2)
         
-        # Save OB3.0 (unsigned)
-        ob3_file = f"credentials/{uuid.uuid4()}.json"
+        # Generate & sign OB3.0
+        ob3 = generate_ob3(email, achievement_name, issuer_name, issuer_did, upstream_url, image_url)
+        ob3_signed = sign_ob3(ob3, private_key_path)
+        ob3_id = str(uuid.uuid4())
+        
         Path("credentials").mkdir(exist_ok=True)
+        ob3_file = f"credentials/{ob3_id}.json"
         with open(ob3_file, 'w') as f:
-            json.dump(ob3, f, indent=2)
+            json.dump(ob3_signed, f, indent=2)
         
         print(f"✅ Generated badges:")
         print(f"   OB2.0: {ob2_file}")
-        print(f"   OB3.0: {ob3_file} (unsigned, needs signing)")
+        print(f"   OB3.0: {ob3_file} (signed)")
         
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)
+        import traceback
+        traceback.print_exc()
         sys.exit(1)
 
 

@@ -150,23 +150,33 @@ def sign_ob3(credential: dict, private_key_path: str) -> dict:
 
 
 def main():
-    if len(sys.argv) < 6:
-        print("Usage: badge_generator.py <email> <achievement_name> <issuer_name> <upstream_url> <image_url> [issuer_did] [private_key_path]")
+    if len(sys.argv) < 8:
+        print("Usage: badge_generator.py <email> <achievement_name> <achievement_description> <issuer_name> <criteria_narrative> <upstream_url> <image_url> [issuer_did] [private_key_path]")
         print("\nExample:")
-        print('  python3 badge_generator.py "user@example.com" "Azure Admin" "Microsoft Learn" "https://..." "https://certs.djpai.dev/images/badge.png"')
+        print('  python3 badge_generator.py "user@example.com" "Azure Admin" "Azure Administrator certification" "Microsoft Learn" "Passed Azure exam" "https://..." "https://certs.djpai.dev/images/badge.png"')
         sys.exit(1)
     
     email = sys.argv[1]
     achievement_name = sys.argv[2]
-    issuer_name = sys.argv[3]
-    upstream_url = sys.argv[4]
-    image_url = sys.argv[5]
-    issuer_did = sys.argv[6] if len(sys.argv) > 6 else "did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL"
-    private_key_path = sys.argv[7] if len(sys.argv) > 7 else "keys/badge_private_key.pem"
+    achievement_description = sys.argv[3]
+    issuer_name = sys.argv[4]
+    criteria_narrative = sys.argv[5]
+    upstream_url = sys.argv[6]
+    image_url = sys.argv[7]
+    issuer_did = sys.argv[8] if len(sys.argv) > 8 else "did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL"
+    private_key_path = sys.argv[9] if len(sys.argv) > 9 else "keys/badge_private_key.pem"
     
     try:
+        # Generate badge definition (unique per achievement)
+        badge_id = str(uuid.uuid4())
+        badge_def = generate_badge_definition(achievement_name, achievement_description, issuer_name, image_url, criteria_narrative, "https://certs.djpai.dev/.well-known/issuer.json")
+        badge_url = f"https://certs.djpai.dev/badges/{badge_id}.json"
+        Path("badges").mkdir(exist_ok=True)
+        with open(f"badges/{badge_id}.json", 'w') as f:
+            json.dump(badge_def, f, indent=2)
+        
         # Generate OB2.0
-        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json")
+        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json", achievement_name, badge_url)
         ob2_id = str(uuid.uuid4())
         ob2["id"] = f"https://certs.djpai.dev/assertions/{ob2_id}.json"
         

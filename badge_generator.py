@@ -210,7 +210,7 @@ def sign_ob3(credential: dict, private_key_path: str) -> dict:
 
 
 def main():
-    if len(sys.argv) < 8:
+    if len(sys.argv) < 7:
         print("Usage: badge_generator.py <email> <achievement_name> <achievement_description> <issuer_name> <criteria_narrative> <upstream_url> <image_url> [issuer_did] [private_key_path]")
         print("\nExample:")
         print('  python3 badge_generator.py "user@example.com" "Azure Admin" "Azure Administrator certification" "Microsoft Learn" "Passed Azure exam" "https://..." "https://certs.djpai.dev/images/badge.png"')
@@ -244,20 +244,6 @@ def main():
         ob2_file = f"assertions/{ob2_id}.json"
         with open(ob2_file, 'w') as f:
             json.dump(ob2, f, indent=2)
-        
-        # Generate & sign OB3.0
-        ob3 = generate_ob3(email, achievement_name, issuer_name, issuer_did, upstream_url, image_url)
-        ob3_signed = sign_ob3(ob3, private_key_path)
-        ob3_id = str(uuid.uuid4())
-        
-        Path("credentials").mkdir(exist_ok=True)
-        ob3_file = f"credentials/{ob3_id}.json"
-        with open(ob3_file, 'w') as f:
-            json.dump(ob3_signed, f, indent=2)
-        
-        # Bake PNG with both credentials
-        png_file = f"badges/{ob3_id}.png"
-        bake_badge_png(image_url, ob2, ob3_signed, png_file)
         
         print(f"✅ Generated badges:")
         print(f"   Badge Def: badges/{badge_id}.json")

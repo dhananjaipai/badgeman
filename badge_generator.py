@@ -25,9 +25,55 @@ try:
 except ImportError:
     HAS_OB3_DEPS = False
 
+try:
+    from PIL import Image
+    import piexif
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
+
+
+def bake_badge_png(image_url: str, ob2_json: dict, ob3_json: dict, output_file: str):
+    """Bake OB2.0 and OB3.0 JSON into PNG metadata."""
+    if not HAS_PIL:
+        print(f"⚠️  Skipping PNG baking (PIL not installed)")
+        return
+    
+    try:
+        import io
+        import urllib.request as urlreq
+        
+        # Download image from URL
+        req = urlreq.Request(image_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urlreq.urlopen(req, timeout=10) as response:
+            img_data = response.read()
+        
+        img = Image.open(io.BytesIO(img_data))
+        
+        # Store OB2.0 and OB3.0 in image PNG metadata
+        metadata = {
+            "ob2": json.dumps(ob2_json, separators=(',', ':')),
+            "ob3": json.dumps(ob3_json, separators=(',', ':'))
+        }
+        
+        # Set PNG info metadata
+        pnginfo = None
+        try:
+            from PIL import PngImagePlugin
+            pnginfo = PngImagePlugin.PngInfo()
+            pnginfo.add_text("ob2", metadata["ob2"])
+            pnginfo.add_text("ob3", metadata["ob3"])
+        except:
+            pass
+        
+        # Save with metadata
+        img.save(output_file, "png", pnginfo=pnginfo)
+        print(f"   PNG: {output_file} (baked with OB2.0 & OB3.0)")
+    except Exception as e:
+        print(f"⚠️  Failed to bake PNG: {e}")
+
 
 _CONTEXT_CACHE = {}
-
 
 def custom_document_loader(url, options=None):
     """Fetch and cache JSON-LD contexts."""
@@ -38,7 +84,7 @@ def custom_document_loader(url, options=None):
     return {"contextUrl": None, "documentUrl": url, "document": _CONTEXT_CACHE[url]}
 
 
-def generate_ob2(email: str, issuer_url: str) -> dict:
+def generate_ob2(email: str, issuer_url: str, achievement_name: str, badge_url: str) -> dict:
     """Generate OB2.0 assertion."""
     email_lower = email.lower()
     email_hash = hashlib.sha256(email_lower.encode()).hexdigest()
@@ -46,7 +92,7 @@ def generate_ob2(email: str, issuer_url: str) -> dict:
     return {
         "@context": "https://w3id.org/openbadges/v2",
         "type": "Assertion",
-        "badge": "https://certs.djpai.dev/badges/badge.json",
+        "badge": badge_url,
         "issuedOn": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         "recipient": {
             "type": "email",
@@ -54,6 +100,21 @@ def generate_ob2(email: str, issuer_url: str) -> dict:
             "identity": f"sha256${email_hash}"
         },
         "verification": {"type": "hosted"}
+    }
+
+
+def generate_badge_definition(achievement_name: str, achievement_description: str, issuer_name: str, image_url: str, criteria_narrative: str, issuer_url: str) -> dict:
+    """Generate OB2.0 badge definition (unique per achievement)."""
+    return {
+        "@context": "https://w3id.org/openbadges/v2",
+        "type": "BadgeClass",
+        "name": achievement_name,
+        "description": achievement_description,
+        "image": image_url,
+        "issuer": issuer_url,
+        "criteria": {
+            "narrative": criteria_narrative or f"Verified achievement from {issuer_name}"
+        }
     }
 
 
@@ -195,9 +256,15 @@ def main():
         with open(ob3_file, 'w') as f:
             json.dump(ob3_signed, f, indent=2)
         
+        # Bake PNG with both credentials
+        png_file = f"badges/{ob3_id}.png"
+        bake_badge_png(image_url, ob2, ob3_signed, png_file)
+        
         print(f"✅ Generated badges:")
+        print(f"   Badge Def: badges/{badge_id}.json")
         print(f"   OB2.0: {ob2_file}")
         print(f"   OB3.0: {ob3_file} (signed)")
+        print(f"   PNG: {png_file} (baked)")
         
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)

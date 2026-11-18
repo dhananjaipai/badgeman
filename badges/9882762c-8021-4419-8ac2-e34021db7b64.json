@@ -1,0 +1,12 @@
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "type": "BadgeClass",
+  "id": "https://certs.djpai.dev/badges/9882762c-8021-4419-8ac2-e34021db7b64.json",
+  "name": "Mistral AI Partner Certification",
+  "description": "Successfully completed the Mistral Partner Learning Path and demonstrated proficiency with Mistral Studio and LLM applications.",
+  "image": "https://certs.djpai.dev/images/9882762c-8021-4419-8ac2-e34021db7b64.png",
+  "issuer": "https://certs.djpai.dev/.well-known/issuer.json",
+  "criteria": {
+    "narrative": "Course Completion"
+  }
+}

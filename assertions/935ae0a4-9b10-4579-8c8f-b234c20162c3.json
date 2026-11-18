@@ -1,0 +1,22 @@
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "type": "Assertion",
+  "badge": "https://certs.djpai.dev/badges/9882762c-8021-4419-8ac2-e34021db7b64.json",
+  "issuedOn": "2026-11-18T19:24:42.252020Z",
+  "recipient": {
+    "type": "email",
+    "hashed": true,
+    "identity": "sha256$5821a508838c00def9952bf7c6016d8ff338d43f3ab7de8d02834d7a45b68a94"
+  },
+  "verification": {
+    "type": "hosted"
+  },
+  "evidence": [
+    {
+      "id": "https://learn.mistral.ai/home/certificate/rdh8v2bdqk",
+      "name": "Upstream Certificate",
+      "narrative": "Original certificate from upstream provider"
+    }
+  ],
+  "id": "https://certs.djpai.dev/assertions/935ae0a4-9b10-4579-8c8f-b234c20162c3.json"
+}

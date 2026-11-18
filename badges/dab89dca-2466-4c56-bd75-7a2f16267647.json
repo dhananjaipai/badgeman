@@ -1,0 +1,11 @@
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "type": "BadgeClass",
+  "name": "Mistral Studio Partner Learning Certificate",
+  "description": "Completed Mistral Partner Learning Path for Mistral Studio",
+  "image": "https://certs.djpai.dev/images/dab89dca-2466-4c56-bd75-7a2f16267647.png",
+  "issuer": "https://certs.djpai.dev/.well-known/issuer.json",
+  "criteria": {
+    "narrative": "Successfully completed all required modules and assessments in the Mistral Partner Learning Path, demonstrating proficiency with Mistral Studio and LLM applications."
+  }
+}

@@ -59,7 +59,7 @@ jobs:
           git config user.email "bot@certs.djpai.dev"
           git add assertions/ credentials/
           git commit -m "Generated: ${{ github.event.inputs.achievement_name }}" || true
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:gh-pages
       
       - name: Summary
         run: |

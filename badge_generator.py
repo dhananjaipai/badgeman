@@ -255,7 +255,8 @@ def main():
         # Generate OB2.0 with upstream evidence
         ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json", achievement_name, badge_url, upstream_url)
         ob2_id = str(uuid.uuid4())
-        ob2["id"] = f"https://certs.djpai.dev/assertions/{ob2_id}.json"
+        # Set id to upstream URL so Credly displays it as the credential URL
+        ob2["id"] = upstream_url
         
         Path("assertions").mkdir(exist_ok=True)
         ob2_file = f"assertions/{ob2_id}.json"

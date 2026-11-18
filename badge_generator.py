@@ -41,6 +41,7 @@ def bake_badge_png(image_path: str, ob2_json: dict, ob3_json: dict, output_file:
     
     try:
         import io
+        from PIL import PngImagePlugin
         
         # Open local image file
         img = Image.open(image_path)
@@ -51,21 +52,18 @@ def bake_badge_png(image_path: str, ob2_json: dict, ob3_json: dict, output_file:
             "ob3": json.dumps(ob3_json, separators=(',', ':'))
         }
         
-        # Set PNG info metadata
-        pnginfo = None
-        try:
-            from PIL import PngImagePlugin
-            pnginfo = PngImagePlugin.PngInfo()
-            pnginfo.add_text("ob2", metadata["ob2"])
-            pnginfo.add_text("ob3", metadata["ob3"])
-        except:
-            pass
+        # Create PNG info with metadata
+        pnginfo = PngImagePlugin.PngInfo()
+        pnginfo.add_text("ob2", metadata["ob2"])
+        pnginfo.add_text("ob3", metadata["ob3"])
         
         # Save with metadata
         img.save(output_file, "png", pnginfo=pnginfo)
         print(f"   PNG: {output_file} (baked with OB2.0 & OB3.0)")
     except Exception as e:
         print(f"⚠️  Failed to bake PNG: {e}")
+        import traceback
+        traceback.print_exc()
 
 
 _CONTEXT_CACHE = {}

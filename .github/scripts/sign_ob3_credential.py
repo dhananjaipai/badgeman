@@ -8,6 +8,7 @@ import json
 import sys
 import hashlib
 import base64
+import base58
 from datetime import datetime, timezone
 from pathlib import Path
 from cryptography.hazmat.primitives import serialization, hashes
@@ -73,8 +74,8 @@ def sign_credential(credential_json_path: str, private_key_path: str, domain: st
     # Sign
     signature_bytes = private_key.sign(signing_input.encode('utf-8'))
     
-    # Encode signature as base64
-    proof_value = base64.b64encode(signature_bytes).decode('utf-8')
+    # Encode signature as base58btc with multibase 'z' prefix
+    proof_value = "z" + base58.b58encode(signature_bytes).decode('ascii')
     
     # Add proof to credential as an array (OB3.0 requirement)
     proof_options["proofValue"] = proof_value

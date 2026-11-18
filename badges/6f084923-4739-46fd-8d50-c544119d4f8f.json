@@ -3,7 +3,7 @@
     "https://www.w3.org/ns/credentials/v2",
     "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json"
   ],
-  "id": "urn:uuid:80a31d3c-6753-480a-b8ca-4080f57c5a25",
+  "id": "urn:uuid:6f084923-4739-46fd-8d50-c544119d4f8f",
   "type": [
     "VerifiableCredential",
     "OpenBadgeCredential"
@@ -16,15 +16,15 @@
     ],
     "name": "Mistral AI"
   },
-  "validFrom": "2026-11-18T16:21:52.949115Z",
-  "issuanceDate": "2026-11-18T16:21:52.949555Z",
+  "validFrom": "2026-11-18T16:24:49.173148Z",
+  "issuanceDate": "2026-11-18T16:24:49.173698Z",
   "credentialSubject": {
     "id": "mailto:dhananjaimvpai@gmail.com",
     "type": [
       "AchievementSubject"
     ],
     "achievement": {
-      "id": "https://certs.djpai.dev/achievements/80a31d3c-6753-480a-b8ca-4080f57c5a25",
+      "id": "https://certs.djpai.dev/achievements/6f084923-4739-46fd-8d50-c544119d4f8f",
       "type": [
         "Achievement"
       ],
@@ -52,10 +52,10 @@
     {
       "type": "DataIntegrityProof",
       "cryptosuite": "eddsa-rdfc-2022",
-      "created": "2026-11-18T16:21:56.540214Z",
+      "created": "2026-11-18T16:24:53.609909Z",
       "verificationMethod": "did:web:certs.djpai.dev#key-1",
       "proofPurpose": "assertionMethod",
-      "proofValue": "JwLOdrwnkZWgC6tcKnezzbSOwddl4tl4N5mqqn/XN6W7pJG00SHieizCy/WKtqHEpjmPc6W2worNNDo3+sDHDQ=="
+      "proofValue": "z219JDc65au7Hmfg8ybZw6kdaJgLNxEa4JwyN8SeijwXBeFhxepPWkDMZjo2xY8QDqPDouYxhaQhNHFkneUQkxx2r"
     }
   ]
 }

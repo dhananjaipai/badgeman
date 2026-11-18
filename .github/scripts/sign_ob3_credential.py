@@ -57,7 +57,7 @@ def sign_credential(credential_json_path: str, private_key_path: str, domain: st
         "type": "DataIntegrityProof",
         "cryptosuite": "eddsa-rdfc-2022",
         "created": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-        "verificationMethod": f"did:web:{domain}#key-1",
+        "verificationMethod": f"did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL#z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL",
         "proofPurpose": "assertionMethod"
     }
     

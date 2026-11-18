@@ -76,7 +76,7 @@ def generate_badge(
         "type": ["VerifiableCredential", "OpenBadgeCredential"],
         "name": issuer_name,
         "issuer": {
-            "id": f"did:web:{domain}",
+            "id": f"did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL",
             "type": ["Profile"],
             "name": issuer_name
         },

@@ -83,7 +83,7 @@ def bake_badge_png(image_url: str, ob2_json: dict, ob3_json: dict, output_file: 
     return {"contextUrl": None, "documentUrl": url, "document": _CONTEXT_CACHE[url]}
 
 
-def generate_ob2(email: str, issuer_url: str, achievement_name: str, image_url: str) -> dict:
+def generate_ob2(email: str, issuer_url: str, achievement_name: str, badge_url: str) -> dict:
     """Generate OB2.0 assertion."""
     email_lower = email.lower()
     email_hash = hashlib.sha256(email_lower.encode()).hexdigest()
@@ -91,7 +91,7 @@ def generate_ob2(email: str, issuer_url: str, achievement_name: str, image_url: 
     return {
         "@context": "https://w3id.org/openbadges/v2",
         "type": "Assertion",
-        "badge": "https://certs.djpai.dev/badges/badge.json",
+        "badge": badge_url,
         "issuedOn": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         "recipient": {
             "type": "email",
@@ -102,18 +102,17 @@ def generate_ob2(email: str, issuer_url: str, achievement_name: str, image_url: 
     }
 
 
-def generate_badge_definition(achievement_name: str, issuer_name: str, image_url: str, issuer_url: str) -> dict:
-    """Generate OB2.0 badge definition (single reusable badge file)."""
+def generate_badge_definition(achievement_name: str, achievement_description: str, issuer_name: str, image_url: str, criteria_narrative: str, issuer_url: str) -> dict:
+    """Generate OB2.0 badge definition (unique per achievement)."""
     return {
         "@context": "https://w3id.org/openbadges/v2",
         "type": "BadgeClass",
-        "id": "https://certs.djpai.dev/badges/badge.json",
         "name": achievement_name,
-        "description": f"Achievement from {issuer_name}",
+        "description": achievement_description,
         "image": image_url,
         "issuer": issuer_url,
         "criteria": {
-            "narrative": f"Verified achievement from upstream {issuer_name} certificate"
+            "narrative": criteria_narrative or f"Verified achievement from {issuer_name}"
         }
     }
 
@@ -211,23 +210,33 @@ def sign_ob3(credential: dict, private_key_path: str) -> dict:
 
 
 def main():
-    if len(sys.argv) < 6:
-        print("Usage: badge_generator.py <email> <achievement_name> <issuer_name> <upstream_url> <image_url> [issuer_did] [private_key_path]")
+    if len(sys.argv) < 7:
+        print("Usage: badge_generator.py <email> <achievement_name> <achievement_description> <issuer_name> <criteria_narrative> <upstream_url> <image_url> [issuer_did] [private_key_path]")
         print("\nExample:")
-        print('  python3 badge_generator.py "user@example.com" "Azure Admin" "Microsoft Learn" "https://..." "https://certs.djpai.dev/images/badge.png"')
+        print('  python3 badge_generator.py "user@example.com" "Azure Admin" "Azure Administrator certification" "Microsoft Learn" "Passed Azure exam" "https://..." "https://certs.djpai.dev/images/badge.png"')
         sys.exit(1)
     
     email = sys.argv[1]
     achievement_name = sys.argv[2]
-    issuer_name = sys.argv[3]
-    upstream_url = sys.argv[4]
-    image_url = sys.argv[5]
-    issuer_did = sys.argv[6] if len(sys.argv) > 6 else "did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL"
-    private_key_path = sys.argv[7] if len(sys.argv) > 7 else "keys/badge_private_key.pem"
+    achievement_description = sys.argv[3]
+    issuer_name = sys.argv[4]
+    criteria_narrative = sys.argv[5]
+    upstream_url = sys.argv[6]
+    image_url = sys.argv[7]
+    issuer_did = sys.argv[8] if len(sys.argv) > 8 else "did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL"
+    private_key_path = sys.argv[9] if len(sys.argv) > 9 else "keys/badge_private_key.pem"
     
     try:
+        # Generate badge definition (unique per achievement)
+        badge_id = str(uuid.uuid4())
+        badge_def = generate_badge_definition(achievement_name, achievement_description, issuer_name, image_url, criteria_narrative, "https://certs.djpai.dev/.well-known/issuer.json")
+        badge_url = f"https://certs.djpai.dev/badges/{badge_id}.json"
+        Path("badges").mkdir(exist_ok=True)
+        with open(f"badges/{badge_id}.json", 'w') as f:
+            json.dump(badge_def, f, indent=2)
+        
         # Generate OB2.0
-        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json", achievement_name, image_url)
+        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json", achievement_name, badge_url)
         ob2_id = str(uuid.uuid4())
         ob2["id"] = f"https://certs.djpai.dev/assertions/{ob2_id}.json"
         
@@ -236,28 +245,8 @@ def main():
         with open(ob2_file, 'w') as f:
             json.dump(ob2, f, indent=2)
         
-        # Generate badge definition (single reusable file)
-        badge_def = generate_badge_definition(achievement_name, issuer_name, image_url, "https://certs.djpai.dev/.well-known/issuer.json")
-        Path("badges").mkdir(exist_ok=True)
-        with open("badges/badge.json", 'w') as f:
-            json.dump(badge_def, f, indent=2)
-        
-        # Generate & sign OB3.0
-        ob3 = generate_ob3(email, achievement_name, issuer_name, issuer_did, upstream_url, image_url)
-        ob3_signed = sign_ob3(ob3, private_key_path)
-        ob3_id = str(uuid.uuid4())
-        
-        Path("credentials").mkdir(exist_ok=True)
-        ob3_file = f"credentials/{ob3_id}.json"
-        with open(ob3_file, 'w') as f:
-            json.dump(ob3_signed, f, indent=2)
-        
-        # Bake PNG with both credentials
-        Path("badges").mkdir(exist_ok=True)
-        png_file = f"badges/{ob3_id}.png"
-        bake_badge_png(image_url, ob2, ob3_signed, png_file)
-        
         print(f"✅ Generated badges:")
+        print(f"   Badge Def: badges/{badge_id}.json")
         print(f"   OB2.0: {ob2_file}")
         print(f"   OB3.0: {ob3_file} (signed)")
         print(f"   PNG: {png_file} (baked)")

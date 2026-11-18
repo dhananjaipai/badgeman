@@ -7,9 +7,17 @@ on:
         description: 'Badge achievement name'
         required: true
         type: string
+      achievement_description:
+        description: 'Badge description'
+        required: true
+        type: string
       issuer_name:
         description: 'Issuer organization name'
         required: true
+        type: string
+      criteria_narrative:
+        description: 'Achievement criteria/narrative'
+        required: false
         type: string
       upstream_url:
         description: 'URL to upstream certificate'
@@ -51,7 +59,9 @@ jobs:
           python3 badge_generator.py \
             "${{ secrets.PERSONAL_EMAIL }}" \
             "${{ github.event.inputs.achievement_name }}" \
+            "${{ github.event.inputs.achievement_description }}" \
             "${{ github.event.inputs.issuer_name }}" \
+            "${{ github.event.inputs.criteria_narrative }}" \
             "${{ github.event.inputs.upstream_url }}" \
             "${{ github.event.inputs.image_url }}"
       

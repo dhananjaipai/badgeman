@@ -25,56 +25,11 @@ try:
 except ImportError:
     HAS_OB3_DEPS = False
 
-try:
-    from PIL import Image
-    import piexif
-    HAS_PIL = True
-except ImportError:
-    HAS_PIL = False
+
+_CONTEXT_CACHE = {}
 
 
-def bake_badge_png(image_url: str, ob2_json: dict, ob3_json: dict, output_file: str):
-    """Bake OB2.0 and OB3.0 JSON into PNG metadata."""
-    if not HAS_PIL:
-        print(f"⚠️  Skipping PNG baking (PIL not installed)")
-        return
-    
-    try:
-        import io
-        import urllib.request as urlreq
-        
-        # Download image from URL
-        req = urlreq.Request(image_url, headers={"User-Agent": "Mozilla/5.0"})
-        with urlreq.urlopen(req, timeout=10) as response:
-            img_data = response.read()
-        
-        img = Image.open(io.BytesIO(img_data))
-        
-        # Store OB2.0 and OB3.0 in image PNG metadata
-        metadata = {
-            "ob2": json.dumps(ob2_json, separators=(',', ':')),
-            "ob3": json.dumps(ob3_json, separators=(',', ':'))
-        }
-        
-        # Set PNG info metadata
-        pnginfo = None
-        try:
-            from PIL import PngImagePlugin
-            pnginfo = PngImagePlugin.PngInfo()
-            pnginfo.add_text("ob2", metadata["ob2"])
-            pnginfo.add_text("ob3", metadata["ob3"])
-        except:
-            pass
-        
-        # Save with metadata
-        img.save(output_file, "png", pnginfo=pnginfo)
-        print(f"   PNG: {output_file} (baked with OB2.0 & OB3.0)")
-    except Exception as e:
-        print(f"⚠️  Failed to bake PNG: {e}")
-
-
-
-
+def custom_document_loader(url, options=None):
     """Fetch and cache JSON-LD contexts."""
     if url not in _CONTEXT_CACHE:
         req = urllib.request.Request(url, headers={"Accept": "application/ld+json, application/json"})
@@ -83,7 +38,7 @@ def bake_badge_png(image_url: str, ob2_json: dict, ob3_json: dict, output_file: 
     return {"contextUrl": None, "documentUrl": url, "document": _CONTEXT_CACHE[url]}
 
 
-def generate_ob2(email: str, issuer_url: str, achievement_name: str, badge_url: str) -> dict:
+def generate_ob2(email: str, issuer_url: str) -> dict:
     """Generate OB2.0 assertion."""
     email_lower = email.lower()
     email_hash = hashlib.sha256(email_lower.encode()).hexdigest()
@@ -91,7 +46,7 @@ def generate_ob2(email: str, issuer_url: str, achievement_name: str, badge_url: 
     return {
         "@context": "https://w3id.org/openbadges/v2",
         "type": "Assertion",
-        "badge": badge_url,
+        "badge": "https://certs.djpai.dev/badges/badge.json",
         "issuedOn": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
         "recipient": {
             "type": "email",
@@ -99,21 +54,6 @@ def generate_ob2(email: str, issuer_url: str, achievement_name: str, badge_url: 
             "identity": f"sha256${email_hash}"
         },
         "verification": {"type": "hosted"}
-    }
-
-
-def generate_badge_definition(achievement_name: str, achievement_description: str, issuer_name: str, image_url: str, criteria_narrative: str, issuer_url: str) -> dict:
-    """Generate OB2.0 badge definition (unique per achievement)."""
-    return {
-        "@context": "https://w3id.org/openbadges/v2",
-        "type": "BadgeClass",
-        "name": achievement_name,
-        "description": achievement_description,
-        "image": image_url,
-        "issuer": issuer_url,
-        "criteria": {
-            "narrative": criteria_narrative or f"Verified achievement from {issuer_name}"
-        }
     }
 
 
@@ -210,33 +150,23 @@ def sign_ob3(credential: dict, private_key_path: str) -> dict:
 
 
 def main():
-    if len(sys.argv) < 7:
-        print("Usage: badge_generator.py <email> <achievement_name> <achievement_description> <issuer_name> <criteria_narrative> <upstream_url> <image_url> [issuer_did] [private_key_path]")
+    if len(sys.argv) < 6:
+        print("Usage: badge_generator.py <email> <achievement_name> <issuer_name> <upstream_url> <image_url> [issuer_did] [private_key_path]")
         print("\nExample:")
-        print('  python3 badge_generator.py "user@example.com" "Azure Admin" "Azure Administrator certification" "Microsoft Learn" "Passed Azure exam" "https://..." "https://certs.djpai.dev/images/badge.png"')
+        print('  python3 badge_generator.py "user@example.com" "Azure Admin" "Microsoft Learn" "https://..." "https://certs.djpai.dev/images/badge.png"')
         sys.exit(1)
     
     email = sys.argv[1]
     achievement_name = sys.argv[2]
-    achievement_description = sys.argv[3]
-    issuer_name = sys.argv[4]
-    criteria_narrative = sys.argv[5]
-    upstream_url = sys.argv[6]
-    image_url = sys.argv[7]
-    issuer_did = sys.argv[8] if len(sys.argv) > 8 else "did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL"
-    private_key_path = sys.argv[9] if len(sys.argv) > 9 else "keys/badge_private_key.pem"
+    issuer_name = sys.argv[3]
+    upstream_url = sys.argv[4]
+    image_url = sys.argv[5]
+    issuer_did = sys.argv[6] if len(sys.argv) > 6 else "did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL"
+    private_key_path = sys.argv[7] if len(sys.argv) > 7 else "keys/badge_private_key.pem"
     
     try:
-        # Generate badge definition (unique per achievement)
-        badge_id = str(uuid.uuid4())
-        badge_def = generate_badge_definition(achievement_name, achievement_description, issuer_name, image_url, criteria_narrative, "https://certs.djpai.dev/.well-known/issuer.json")
-        badge_url = f"https://certs.djpai.dev/badges/{badge_id}.json"
-        Path("badges").mkdir(exist_ok=True)
-        with open(f"badges/{badge_id}.json", 'w') as f:
-            json.dump(badge_def, f, indent=2)
-        
         # Generate OB2.0
-        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json", achievement_name, badge_url)
+        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json")
         ob2_id = str(uuid.uuid4())
         ob2["id"] = f"https://certs.djpai.dev/assertions/{ob2_id}.json"
         
@@ -255,15 +185,9 @@ def main():
         with open(ob3_file, 'w') as f:
             json.dump(ob3_signed, f, indent=2)
         
-        # Bake PNG with both credentials
-        png_file = f"badges/{ob3_id}.png"
-        bake_badge_png(image_url, ob2, ob3_signed, png_file)
-        
         print(f"✅ Generated badges:")
-        print(f"   Badge Def: badges/{badge_id}.json")
         print(f"   OB2.0: {ob2_file}")
         print(f"   OB3.0: {ob3_file} (signed)")
-        print(f"   PNG: {png_file} (baked)")
         
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)

@@ -1,13 +1,14 @@
 {
   "@context": [
-    "https://www.w3.org/2018/credentials/v1",
-    "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.2.json"
+    "https://www.w3.org/ns/credentials/v2",
+    "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json"
   ],
-  "id": "urn:uuid:05647af0-8547-4369-ab5f-332a1e446463",
+  "id": "urn:uuid:fd018a05-41e2-4019-b428-4c0538bba0c1",
   "type": [
     "VerifiableCredential",
     "OpenBadgeCredential"
   ],
+  "name": "Mistral AI",
   "issuer": {
     "id": "did:web:certs.djpai.dev",
     "type": [
@@ -15,18 +16,19 @@
     ],
     "name": "Mistral AI"
   },
-  "validFrom": "2026-11-18T16:15:21.326960Z",
+  "issuanceDate": "2026-11-18T16:19:26.482647Z",
   "credentialSubject": {
     "id": "mailto:dhananjaimvpai@gmail.com",
     "type": [
       "AchievementSubject"
     ],
     "achievement": {
-      "id": "https://certs.djpai.dev/achievements/05647af0-8547-4369-ab5f-332a1e446463",
+      "id": "https://certs.djpai.dev/achievements/fd018a05-41e2-4019-b428-4c0538bba0c1",
       "type": [
         "Achievement"
       ],
       "name": "Mistral Studio Partner Learning Certificate",
+      "description": "Achievement: Mistral Studio Partner Learning Certificate",
       "image": {
         "id": "https://certs.djpai.dev/badges/images/mistral_badge.png",
         "type": "Image"
@@ -45,12 +47,14 @@
       "name": "Original Upstream Mistral AI Certificate"
     }
   ],
-  "proof": {
-    "type": "DataIntegrityProof",
-    "cryptosuite": "eddsa-rdfc-2022",
-    "created": "2026-11-18T16:16:02.281709Z",
-    "verificationMethod": "did:web:certs.djpai.dev#key-1",
-    "proofPurpose": "assertionMethod",
-    "proofValue": "hJ+ON3feScWPOkV4fEgDoUopTiCjdfXfvl6z/QKyfBcP2GuBKBYv5KkX1OXutKWU+OFP8r1sTjLwuOKeKRYgAw=="
-  }
+  "proof": [
+    {
+      "type": "DataIntegrityProof",
+      "cryptosuite": "eddsa-rdfc-2022",
+      "created": "2026-11-18T16:19:40.840698Z",
+      "verificationMethod": "did:web:certs.djpai.dev#key-1",
+      "proofPurpose": "assertionMethod",
+      "proofValue": "ivjT6mSB/RmL1SDgpmiuzhttp2T8k95jhl1sB/296xzkn8H/qHTWRc1Rc3oD8ExihkGqmSd9c7QmnwJPuL+2Cw=="
+    }
+  ]
 }

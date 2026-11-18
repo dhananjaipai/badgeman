@@ -69,28 +69,29 @@ def generate_badge(
     # Parse expiry date if provided (dd/mm/yyyy → ISO 8601)
     credential_obj = {
         "@context": [
-            "https://www.w3.org/2018/credentials/v1",
-            "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.2.json"
+            "https://www.w3.org/ns/credentials/v2",
+            "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json"
         ],
         "id": f"urn:uuid:{credential_uuid}",
         "type": ["VerifiableCredential", "OpenBadgeCredential"],
+        "name": issuer_name,
         "issuer": {
             "id": f"did:web:{domain}",
             "type": ["Profile"],
             "name": issuer_name
         },
-        "validFrom": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+        "issuanceDate": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
     }
     
-    # Add expiration date if provided
-    if expiry_date:
-        try:
-            day, month, year = expiry_date.split('/')
-            # Convert dd/mm/yyyy to ISO 8601 (end of day)
-            expiry_dt = datetime(int(year), int(month), int(day), 23, 59, 59, tzinfo=timezone.utc)
-            credential_obj["expirationDate"] = expiry_dt.isoformat().replace('+00:00', 'Z')
-        except (ValueError, IndexError):
-            raise ValueError(f"Invalid date format: {expiry_date}. Use dd/mm/yyyy")
+    # Add expiration date if provided (kept for future use)
+    # if expiry_date:
+    #     try:
+    #         day, month, year = expiry_date.split('/')
+    #         expiry_dt = datetime(int(year), int(month), int(day), 23, 59, 59, tzinfo=timezone.utc)
+    #         credential_obj["expirationDate"] = expiry_dt.isoformat().replace('+00:00', 'Z')
+    #     except (ValueError, IndexError):
+    #         raise ValueError(f"Invalid date format: {expiry_date}. Use dd/mm/yyyy")
+    
     
     credential_obj.update({
         "credentialSubject": {
@@ -100,6 +101,7 @@ def generate_badge(
                 "id": f"https://{domain}/achievements/{credential_uuid}",
                 "type": ["Achievement"],
                 "name": achievement_name,
+                "description": f"Achievement: {achievement_name}",
                 "image": {
                     "id": image_url,
                     "type": "Image"

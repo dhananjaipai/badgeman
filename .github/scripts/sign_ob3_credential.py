@@ -76,9 +76,9 @@ def sign_credential(credential_json_path: str, private_key_path: str, domain: st
     # Encode signature as base64
     proof_value = base64.b64encode(signature_bytes).decode('utf-8')
     
-    # Add proof to credential
+    # Add proof to credential as an array (OB3.0 requirement)
     proof_options["proofValue"] = proof_value
-    credential["proof"] = proof_options
+    credential["proof"] = [proof_options]
     
     return credential
 
@@ -105,8 +105,8 @@ def main():
         
         print(f"✅ Credential signed successfully!")
         print(f"   File: {credential_path}")
-        print(f"   Proof type: {signed_credential['proof']['cryptosuite']}")
-        print(f"   Verification method: {signed_credential['proof']['verificationMethod']}")
+        print(f"   Proof type: {signed_credential['proof'][0]['cryptosuite']}")
+        print(f"   Verification method: {signed_credential['proof'][0]['verificationMethod']}")
         print(f"\n📋 Next step: Upload this JSON to Credly or test with validator")
         print(f"   Validator: https://badges.badgr.com/public/validate")
         

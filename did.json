@@ -1,0 +1,18 @@
+{
+  "@context": "https://www.w3.org/ns/did/v1",
+  "id": "did:web:certs.djpai.dev",
+  "verificationMethod": [
+    {
+      "id": "did:web:certs.djpai.dev#key-1",
+      "type": "Ed25519VerificationKey2020",
+      "controller": "did:web:certs.djpai.dev",
+      "publicKeyMultibase": "z5uaqciaaymni5fp42jq6ga3kzwqynzcnyzlxvcpemrvnz4umtt3p5jsxy4======"
+    }
+  ],
+  "authentication": [
+    "did:web:certs.djpai.dev#key-1"
+  ],
+  "assertionMethod": [
+    "did:web:certs.djpai.dev#key-1"
+  ]
+}

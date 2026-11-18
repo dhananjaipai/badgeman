@@ -27,7 +27,6 @@ except ImportError:
 
 try:
     from PIL import Image
-    import piexif
     HAS_PIL = True
 except ImportError:
     HAS_PIL = False

@@ -263,7 +263,6 @@ def main():
         
         # Bake PNG with both credentials
         png_file = f"badges/{ob3_id}.png"
-        print(f"   DEBUG: Baking PNG from {image_filename} to {png_file}...")
         bake_badge_png(image_filename, ob2, ob3_signed, png_file)
         
         print(f"✅ Generated badges:")

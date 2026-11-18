@@ -91,11 +91,12 @@ def generate_ob2(email: str, issuer_url: str, achievement_name: str, badge_url: 
     }
 
 
-def generate_badge_definition(achievement_name: str, achievement_description: str, issuer_name: str, image_url: str, criteria_narrative: str, issuer_url: str) -> dict:
+def generate_badge_definition(achievement_name: str, achievement_description: str, issuer_name: str, image_url: str, criteria_narrative: str, issuer_url: str, badge_id: str) -> dict:
     """Generate OB2.0 badge definition (unique per achievement)."""
     return {
         "@context": "https://w3id.org/openbadges/v2",
         "type": "BadgeClass",
+        "id": f"https://certs.djpai.dev/badges/{badge_id}.json",
         "name": achievement_name,
         "description": achievement_description,
         "image": image_url,
@@ -231,11 +232,13 @@ def main():
         local_image_url = f"https://certs.djpai.dev/images/{badge_id}.png"
         
         # Generate badge definition (unique per achievement) with local image
-        badge_def = generate_badge_definition(achievement_name, achievement_description, issuer_name, local_image_url, criteria_narrative, "https://certs.djpai.dev/.well-known/issuer.json")
-        badge_url = f"https://certs.djpai.dev/badges/{badge_id}.json"
+        badge_def = generate_badge_definition(achievement_name, achievement_description, issuer_name, local_image_url, criteria_narrative, "https://certs.djpai.dev/.well-known/issuer.json", badge_id)
         Path("badges").mkdir(exist_ok=True)
         with open(f"badges/{badge_id}.json", 'w') as f:
             json.dump(badge_def, f, indent=2)
+        
+        # Get badge URL from the definition
+        badge_url = badge_def["id"]
         
         # Generate OB2.0
         ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json", achievement_name, badge_url)

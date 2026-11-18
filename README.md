@@ -1,219 +1,133 @@
-# Open Badges 3.0 Proxy Issuer for Credly
+# Open Badges Proxy Issuer
 
-**Self-host compliant Open Badges 3.0 credentials for platforms (Microsoft Learn, Mistral, Oracle, Salesforce, internal) that don't yet support W3C Verifiable Credentials.**
+Cryptographically signed Open Badges proxy for Credly. Accepts non-compliant upstream credentials (Microsoft Learn, Oracle, Mistral AI) and issues verified badges.
 
-By acting as a **Proxy Issuer**, you cryptographically sign a wrapper credential that points to your upstream certificates. Credly verifies the signature against your public key on GitHub Pages, then validates the upstream evidence link.
+## 🎯 Supported Formats
 
----
-
-## 🎯 Why This Matters
-
-Platforms like Microsoft Learn, Mistral AI, and internal corporate systems don't issue compliant Open Badges 3.0 credentials. Credly's native verifier blocks them. **This system solves that** by letting you create verifiable wrappers that:
-
-- ✅ Are cryptographically signed with Ed25519
-- ✅ Reference the upstream certificate as evidence
-- ✅ Credly can verify and display in your portfolio
-- ✅ Show the REAL issuer name (not "djpai.dev Proxy Issuer")
-- ✅ Require only static hosting (GitHub Pages)
-
----
-
-## 🏗️ Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────┐
-│ You: Trigger GitHub Action with badge details          │
-├─────────────────────────────────────────────────────────┤
-│ Workflow:                                               │
-│  1. Download badge image from URL                      │
-│  2. Generate Open Badges 3.0 JSON                      │
-│  3. Sign with Ed25519 private key                      │
-│  4. Commit to gh-pages branch                          │
-│  5. Print public HTTPS URL                             │
-│                                                         │
-│ GitHub Pages: certs.djpai.dev                          │
-│  ├─ /.well-known/did.json (public key)                 │
-│  └─ /badges/                                            │
-│      ├─ images/                                         │
-│      └─ [uuid].json (signed credentials)               │
-│                                                         │
-├─────────────────────────────────────────────────────────┤
-│ You: Download JSON from GitHub summary                 │
-│      Upload to Credly via "Other Badges" UI            │
-│                                                         │
-│ Credly:                                                 │
-│  1. Fetches did.json from certs.djpai.dev              │
-│  2. Verifies Ed25519 signature                         │
-│  3. Displays badge with YOUR issuer name               │
-│  4. Shows upstream evidence link                       │
-└─────────────────────────────────────────────────────────┘
-```
-
----
-
-## 🔐 Cryptographic Identity (did:web)
-
-You have a **unique cryptographic identity** that Credly trusts:
-
-```
-did:web:certs.djpai.dev
-  ↓
-Resolves to: https://certs.djpai.dev/.well-known/did.json
-  ↓
-Contains: Your Ed25519 public key
-  ↓
-Used by: Credly to verify all credentials you sign
-```
-
-This public key is published on GitHub Pages. When you sign a credential with your Ed25519 private key, Credly can verify it matches the public key at your domain.
-
----
-
-## ⚙️ How It Works
-
-### 1. Workflow Inputs
-
-You provide:
-- **upstream_url**: Link to original certificate (e.g., Microsoft Learn, Mistral, Google Drive)
-- **image_url**: Direct link to badge image (PNG/SVG)
-- **issuer_name**: Organization name (e.g., "Microsoft Learn") — **this appears in Credly**
-- **achievement_name**: Badge name (e.g., "Azure Administrator Associate")
-- **expiry_date** (optional): dd/mm/yyyy format for credential expiration
-
-### 2. What Gets Generated
-
-```json
-{
-  "@context": ["https://www.w3.org/2018/credentials/v1", "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.2.json"],
-  "id": "urn:uuid:a1b2c3d4-e5f6-4a5b-9c8d-7e6f5a4b3c2d",
-  "type": ["VerifiableCredential", "OpenBadgeCredential"],
-
-  "issuer": {
-    "id": "did:web:certs.djpai.dev",        # Your cryptographic identity (signer)
-    "name": "Microsoft Learn"               # Your issuer_name input (what Credly shows!)
-  },
-
-  "validFrom": "2026-11-17T19:46:00Z",
-  "expirationDate": "2027-11-17T23:59:59Z",
-
-  "credentialSubject": {
-    "id": "mailto:<mail>",    # Your email from PERSONAL_EMAIL secret
-    "achievement": {
-      "name": "Azure Administrator Associate",  # Your achievement_name input
-      "image": {
-        "id": "https://certs.djpai.dev/badges/images/badge-7f8e9d1c.png"  # Hosted on your domain
-      }
-    }
-  },
-
-  "evidence": [{
-    "id": "https://learn.microsoft.com/en-us/users/.../credentials/...",  # Your upstream_url
-    "name": "Original Microsoft Learn Certificate"
-  }],
-
-  "proof": {
-    "type": "DataIntegrityProof",
-    "cryptosuite": "ed25519-2020",
-    "created": "2026-11-17T19:46:30Z",
-    "verificationMethod": "did:web:certs.djpai.dev#key-1",
-    "proofPurpose": "assertionMethod",
-    "proofValue": "base64encodedEd25519Signature..."  # Cryptographic signature
-  }
-}
-```
-
-**What Credly sees**:
-- ✅ Issuer: "Microsoft Learn" (from your input!)
-- ✅ Achievement: "Azure Administrator Associate"
-- ✅ Your email: dhananjaimvpai@gmail.com
-- ✅ Image: Fetched from your domain
-- ✅ Upstream evidence: Link for verification
-- ✅ Cryptographic proof: Verifiable against did:web:certs.djpai.dev
-
-### 3. Image Handling (Smart Deduplication)
-
-Workflow downloads image from URL and saves with deterministic filename:
-
-```
-Input URL: https://learn.microsoft.com/static/azure-badge.png
-  ↓
-Hash: md5(url) = 7f8e9d1c
-  ↓
-Saved as: badges/images/badge-7f8e9d1c.png
-  ↓
-If same URL later: Same filename (no duplicates!)
-```
-
-### 4. Storing Badges (Permanent)
-
-Signed badge JSON committed to `gh-pages` branch:
-
-```
-https://certs.djpai.dev/badges/{uuid}.json
-```
-
-This is:
-- ✅ Permanent (git history)
-- ✅ Versioned (can track changes)
-- ✅ Publicly accessible (can share URL)
-- ✅ No expiration (not like GitHub Actions artifacts)
-
----
+- **OB2.0** (IMS Global) - For Credly upload
+- **OB3.0** (W3C Verifiable Credentials) - Self-contained cryptographic signatures
 
 ## 🚀 Quick Start
 
-### Step 1: Verify Prerequisites
+### Generate Badges (GitHub Actions)
 
-- GitHub Pages: Publishing from `gh-pages` branch, custom domain `certs.djpai.dev`
+1. Go to **Actions** → **Generate Open Badges**
+2. Click **Run workflow**
+3. Fill in the inputs:
+   - **Email**: recipient email (lowercase)
+   - **Achievement Name**: Badge title
+   - **Issuer Name**: Organization (e.g., "Microsoft Learn")
+   - **Upstream URL**: Link to original certificate
+   - **Image URL**: Badge image URL (e.g., `https://certs.djpai.dev/badges/images/badge.png`)
+4. Run → Badges generated and committed
 
-### Step 2: Trigger Workflow
+### Manual Generation (Local)
 
-Go to repo → **Actions** → **Sign and Deploy Badge** → **Run workflow**
-
-Fill in:
-- **upstream_url**: `https://learn.mistral.ai/public/certificate/rdh8v2bdqk`
-- **image_url**: `https://mistral.ai/badge.png`
-- **issuer_name**: `Mistral AI`
-- **achievement_name**: `Machine Learning Expert`
-- **expiry_date**: `17/11/2027` (optional)
-
-### Step 3: Get Badge JSON
-
-Workflow runs (~60 seconds), then:
-1. GitHub Actions summary shows badge details
-2. Click badge JSON link or scroll to see it
-3. Right-click → **Save link as** to download
-
-Alternatively:
 ```bash
-curl -O https://certs.djpai.dev/badges/{uuid}.json
+python3 badge_generator.py \
+  "user@example.com" \
+  "Azure Administrator Associate" \
+  "Microsoft Learn" \
+  "https://learn.microsoft.com/en-us/users/..." \
+  "https://certs.djpai.dev/badges/images/azure-badge.png"
 ```
 
-### Step 4: Upload to Credly
+Outputs:
+- OB2.0: `assertions/<uuid>.json` (ready to upload to Credly)
+- OB3.0: `credentials/<uuid>.json` (unsigned)
 
-1. Go to https://credly.com → Sign in
-2. Badge Wallet → Other tab
-3. Click **+ Upload Other Badges**
-4. Select the JSON file
-5. Done! Credly displays badge with "Mistral AI" as issuer
+### Sign OB3.0 Credentials
 
----
-
-## 🔍 Troubleshooting
-
-### "Image download failed"
-Check image URL is publicly accessible:
 ```bash
-curl -I "https://example.com/badge.png"
+python3 .github/scripts/sign_ob3_credential.py credentials/<uuid>.json keys/badge_private_key.pem
 ```
 
-### "Credly can't verify signature"
-- Verify email matches Credly account (lowercase!)
-- Check `certs.djpai.dev/.well-known/did.json` is accessible
-- Workflow logs show detailed errors
+## 📋 OB2.0 Workflow (Credly Upload)
 
-### "GitHub Pages not building"
-- Verify `.nojekyll` file exists
-- Check `gh-pages` branch is publishing source
-- Custom domain set to `certs.djpai.dev`
-- DNS might need 2-5 minutes to propagate
+1. Generate with `badge_generator.py`
+2. Find `assertions/<uuid>.json`
+3. Upload to Credly: Badge Wallet → Other → + Upload Other Badges → Select JSON file
+
+## 🔐 OB3.0 Workflow (W3C Verifiable Credentials)
+
+1. Generate with `badge_generator.py`
+2. Sign with `.github/scripts/sign_ob3_credential.py`
+3. Upload to Credly or verify at: https://badges.badgr.com/public/validate
+
+## 🔑 Cryptography
+
+- **Algorithm**: Ed25519
+- **Signing**: eddsa-rdfc-2022 (RDF canonicalization URDNA2015)
+- **DID**: `did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL`
+- **Public Key**: `.well-known/did.json` and `/.well-known/issuer.json`
+
+## 📂 Directory Structure
+
+```
+.
+├── badge_generator.py                # Unified OB2.0 + OB3.0 generator
+├── .github/
+│   ├── workflows/
+│   │   └── generate-badges.yml       # GitHub Actions workflow
+│   └── scripts/
+│       └── sign_ob3_credential.py    # OB3.0 Ed25519 signer
+├── .well-known/
+│   ├── did.json                      # DID document with public key
+│   └── issuer.json                   # OB2.0 issuer metadata
+├── keys/
+│   ├── badge_private_key.pem         # Private key (SECRET - in repo secrets)
+│   └── badge_public_key.pem          # Public key
+├── assertions/                       # OB2.0 badges
+├── credentials/                      # OB3.0 badges (unsigned)
+└── badges/
+    ├── images/                       # Badge graphics
+    └── mistral-partner.json          # Badge class template
+```
+
+## ⚙️ Configuration
+
+**Email Hashing**: OB2.0 uses SHA256 unsalted hash of lowercase email
+- Must match exactly with Credly account email
+- Example: `dhananjaimvpai@gmail.com` → `sha256$5821a508...`
+
+**Issuer**: Configure in `.well-known/issuer.json`
+- Name, email, description, logo
+
+**DID**: OB3.0 uses `did:key` format with embedded public key
+- Self-verifiable, no network lookup needed
+
+## 🧪 Testing
+
+**OB2.0**: Upload to Credly → Check wallet
+
+**OB3.0**: https://badges.badgr.com/public/validate
+- Paste credential URL or JSON
+- Should show: ✅ All 13 tests pass
+
+## 🛠️ Troubleshooting
+
+### OB2.0 Upload Fails
+- Verify email hash matches Credly account
+- Ensure image URL is accessible
+- Check issuer metadata in `.well-known/issuer.json`
+
+### OB3.0 Signature Invalid
+- Verify Ed25519 private key in `keys/badge_private_key.pem`
+- Check RDF canonicalization: contexts must fetch from real URLs
+- Ensure proof uses base58btc encoding (starts with `z`)
+
+### Cloudflare Cache Issues
+- Purge cache manually in Cloudflare dashboard
+- Or wait 10 minutes for TTL
+
+## 📚 References
+
+- [Open Badges 2.0 Spec](https://www.imsglobal.org/sites/default/files/Badges/OBv2_0Final.pdf)
+- [Open Badges 3.0 Spec](https://www.imsglobal.org/spec/ob/v3p0/)
+- [W3C Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)
+- [DID Spec](https://www.w3.org/TR/did-core/)
+- [Data Integrity Proofs](https://www.w3.org/TR/vc-data-integrity/)
+
+## 📄 License
+
+MIT

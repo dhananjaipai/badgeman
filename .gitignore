@@ -1,4 +1,4 @@
-# Private cryptographic keys - NEVER commit!
+# Private keys
 keys/badge_private_key.pem
 keys/*.key
 
@@ -17,6 +17,11 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
-# Temporary files
+# Temporary
 *.tmp
 *.bak
+*.pem.bak
+
+# Generated badges (keep directories but ignore content)
+# assertions/*.json
+# credentials/*.json

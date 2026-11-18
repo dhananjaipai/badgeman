@@ -1,0 +1,76 @@
+name: Generate Open Badges (OB2.0 & OB3.0)
+
+on:
+  workflow_dispatch:
+    inputs:
+      email:
+        description: 'Recipient email (lowercase, no spaces)'
+        required: true
+        type: string
+      achievement_name:
+        description: 'Badge achievement name'
+        required: true
+        type: string
+      issuer_name:
+        description: 'Issuer organization name'
+        required: true
+        type: string
+      upstream_url:
+        description: 'URL to upstream certificate'
+        required: true
+        type: string
+      image_url:
+        description: 'Badge image URL'
+        required: true
+        type: string
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+      
+      - name: Install dependencies
+        run: |
+          pip install -q pyld cryptography base58
+      
+      - name: Generate badges (OB2.0 & OB3.0)
+        run: |
+          python3 badge_generator.py \
+            "${{ github.event.inputs.email }}" \
+            "${{ github.event.inputs.achievement_name }}" \
+            "${{ github.event.inputs.issuer_name }}" \
+            "${{ github.event.inputs.upstream_url }}" \
+            "${{ github.event.inputs.image_url }}"
+      
+      - name: Sign OB3.0 credential
+        run: |
+          OB3_FILE=$(find credentials -name "*.json" -type f | head -1)
+          if [ -n "$OB3_FILE" ]; then
+            python3 .github/scripts/sign_ob3_credential.py "$OB3_FILE" keys/badge_private_key.pem
+            echo "✅ OB3.0 signed: $OB3_FILE"
+          fi
+      
+      - name: Commit and push
+        run: |
+          git config user.name "Badge Generator Bot"
+          git config user.email "bot@certs.djpai.dev"
+          git add assertions/ credentials/
+          git commit -m "Generated badges: ${{ github.event.inputs.achievement_name }}" || true
+          git push
+      
+      - name: Summary
+        run: |
+          echo "## ✅ Badges Generated"
+          echo ""
+          echo "### OB2.0 (Ready for Credly)"
+          find assertions -name "*.json" -type f -exec echo "- {}" \;
+          echo ""
+          echo "### OB3.0 (Signed & Ready)"
+          find credentials -name "*.json" -type f -exec echo "- {}" \;

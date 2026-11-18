@@ -1,0 +1,10 @@
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "type": "Profile",
+  "id": "https://certs.djpai.dev",
+  "name": "djpai.dev Certificate Proxy",
+  "url": "https://certs.djpai.dev",
+  "email": "certs@djpai.dev",
+  "image": "https://i.imgur.com/TlV5MtD.png",
+  "description": "Open Badges proxy issuer for upstream certificate validation and Credly compatibility"
+}

@@ -226,12 +226,6 @@ def main():
     issuer_did = sys.argv[8] if len(sys.argv) > 8 else "did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL"
     private_key_path = sys.argv[9] if len(sys.argv) > 9 else "keys/badge_private_key.pem"
     
-    print(f"DEBUG: len(sys.argv)={len(sys.argv)}")
-    print(f"DEBUG: email={email}")
-    print(f"DEBUG: achievement_name={achievement_name}")
-    print(f"DEBUG: image_url={image_url}")
-    print(f"DEBUG: private_key_path={private_key_path}")
-    
     try:
         # Generate badge definition (unique per achievement)
         badge_id = str(uuid.uuid4())

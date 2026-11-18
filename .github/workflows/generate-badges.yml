@@ -38,7 +38,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: gh-pages
+          ref: main
       
       - name: Set up Python
         uses: actions/setup-python@v4
@@ -71,7 +71,7 @@ jobs:
           git config user.email "bot@certs.djpai.dev"
           git add assertions/ credentials/ badges/
           git commit -m "Generated: ${{ github.event.inputs.achievement_name }}" || true
-          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:gh-pages
+          git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:main
       
       - name: Summary
         run: |

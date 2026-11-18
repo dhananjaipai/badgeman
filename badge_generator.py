@@ -83,7 +83,7 @@ def bake_badge_png(image_url: str, ob2_json: dict, ob3_json: dict, output_file: 
     return {"contextUrl": None, "documentUrl": url, "document": _CONTEXT_CACHE[url]}
 
 
-def generate_ob2(email: str, issuer_url: str) -> dict:
+def generate_ob2(email: str, issuer_url: str, achievement_name: str, image_url: str) -> dict:
     """Generate OB2.0 assertion."""
     email_lower = email.lower()
     email_hash = hashlib.sha256(email_lower.encode()).hexdigest()
@@ -99,6 +99,22 @@ def generate_ob2(email: str, issuer_url: str) -> dict:
             "identity": f"sha256${email_hash}"
         },
         "verification": {"type": "hosted"}
+    }
+
+
+def generate_badge_definition(achievement_name: str, issuer_name: str, image_url: str, issuer_url: str) -> dict:
+    """Generate OB2.0 badge definition (single reusable badge file)."""
+    return {
+        "@context": "https://w3id.org/openbadges/v2",
+        "type": "BadgeClass",
+        "id": "https://certs.djpai.dev/badges/badge.json",
+        "name": achievement_name,
+        "description": f"Achievement from {issuer_name}",
+        "image": image_url,
+        "issuer": issuer_url,
+        "criteria": {
+            "narrative": f"Verified achievement from upstream {issuer_name} certificate"
+        }
     }
 
 
@@ -211,7 +227,7 @@ def main():
     
     try:
         # Generate OB2.0
-        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json")
+        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json", achievement_name, image_url)
         ob2_id = str(uuid.uuid4())
         ob2["id"] = f"https://certs.djpai.dev/assertions/{ob2_id}.json"
         
@@ -219,6 +235,12 @@ def main():
         ob2_file = f"assertions/{ob2_id}.json"
         with open(ob2_file, 'w') as f:
             json.dump(ob2, f, indent=2)
+        
+        # Generate badge definition (single reusable file)
+        badge_def = generate_badge_definition(achievement_name, issuer_name, image_url, "https://certs.djpai.dev/.well-known/issuer.json")
+        Path("badges").mkdir(exist_ok=True)
+        with open("badges/badge.json", 'w') as f:
+            json.dump(badge_def, f, indent=2)
         
         # Generate & sign OB3.0
         ob3 = generate_ob3(email, achievement_name, issuer_name, issuer_did, upstream_url, image_url)

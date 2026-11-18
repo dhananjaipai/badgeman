@@ -25,11 +25,55 @@ try:
 except ImportError:
     HAS_OB3_DEPS = False
 
+try:
+    from PIL import Image
+    import piexif
+    HAS_PIL = True
+except ImportError:
+    HAS_PIL = False
 
-_CONTEXT_CACHE = {}
+
+def bake_badge_png(image_url: str, ob2_json: dict, ob3_json: dict, output_file: str):
+    """Bake OB2.0 and OB3.0 JSON into PNG metadata."""
+    if not HAS_PIL:
+        print(f"⚠️  Skipping PNG baking (PIL not installed)")
+        return
+    
+    try:
+        import io
+        import urllib.request as urlreq
+        
+        # Download image from URL
+        req = urlreq.Request(image_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urlreq.urlopen(req, timeout=10) as response:
+            img_data = response.read()
+        
+        img = Image.open(io.BytesIO(img_data))
+        
+        # Extract existing EXIF if present
+        exif_dict = {}
+        try:
+            exif_dict = piexif.load(io.BytesIO(img_data))
+        except:
+            exif_dict = {"0th": {}, "Exif": {}, "GPS": {}}
+        
+        # Store OB2.0 and OB3.0 in image metadata (UserComment field)
+        metadata = {
+            "ob2": json.dumps(ob2_json, separators=(',', ':')),
+            "ob3": json.dumps(ob3_json, separators=(',', ':'))
+        }
+        
+        exif_dict["0th"][piexif.ImageIFD.ImageDescription] = json.dumps(metadata).encode('utf-8')
+        
+        # Save with metadata
+        exif_bytes = piexif.dump(exif_dict)
+        img.save(output_file, "png", exif=exif_bytes)
+        print(f"   PNG: {output_file} (baked with OB2.0 & OB3.0)")
+    except Exception as e:
+        print(f"⚠️  Failed to bake PNG: {e}")
 
 
-def custom_document_loader(url, options=None):
+
     """Fetch and cache JSON-LD contexts."""
     if url not in _CONTEXT_CACHE:
         req = urllib.request.Request(url, headers={"Accept": "application/ld+json, application/json"})
@@ -185,9 +229,15 @@ def main():
         with open(ob3_file, 'w') as f:
             json.dump(ob3_signed, f, indent=2)
         
+        # Bake PNG with both credentials
+        Path("badges").mkdir(exist_ok=True)
+        png_file = f"badges/{ob3_id}.png"
+        bake_badge_png(image_url, ob2, ob3_signed, png_file)
+        
         print(f"✅ Generated badges:")
         print(f"   OB2.0: {ob2_file}")
         print(f"   OB3.0: {ob3_file} (signed)")
+        print(f"   PNG: {png_file} (baked)")
         
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)

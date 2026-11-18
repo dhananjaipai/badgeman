@@ -66,7 +66,6 @@ python3 badge_generator.py \
 ├── badge_generator.py                    # Unified OB2.0 + OB3.0 generator
 ├── .github/
 │   ├── workflows/generate-badges.yml     # GitHub Actions workflow
-│   └── scripts/sign_ob3_credential.py    # OB3.0 signer (reference)
 ├── .well-known/
 │   └── issuer.json                       # OB2.0 issuer metadata
 ├── keys/

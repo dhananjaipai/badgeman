@@ -44,7 +44,7 @@ jobs:
       
       - name: Install dependencies
         run: |
-          pip install -q pyld cryptography base58 Pillow piexif
+          pip install -q pyld cryptography base58 Pillow
       
       - name: Generate & sign badges
         run: |

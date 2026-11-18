@@ -50,27 +50,28 @@ def bake_badge_png(image_url: str, ob2_json: dict, ob3_json: dict, output_file: 
         
         img = Image.open(io.BytesIO(img_data))
         
-        # Extract existing EXIF if present
-        exif_dict = {}
-        try:
-            exif_dict = piexif.load(io.BytesIO(img_data))
-        except:
-            exif_dict = {"0th": {}, "Exif": {}, "GPS": {}}
-        
-        # Store OB2.0 and OB3.0 in image metadata (UserComment field)
+        # Store OB2.0 and OB3.0 in image PNG metadata
         metadata = {
             "ob2": json.dumps(ob2_json, separators=(',', ':')),
             "ob3": json.dumps(ob3_json, separators=(',', ':'))
         }
         
-        exif_dict["0th"][piexif.ImageIFD.ImageDescription] = json.dumps(metadata).encode('utf-8')
+        # Set PNG info metadata
+        pnginfo = None
+        try:
+            from PIL import PngImagePlugin
+            pnginfo = PngImagePlugin.PngInfo()
+            pnginfo.add_text("ob2", metadata["ob2"])
+            pnginfo.add_text("ob3", metadata["ob3"])
+        except:
+            pass
         
         # Save with metadata
-        exif_bytes = piexif.dump(exif_dict)
-        img.save(output_file, "png", exif=exif_bytes)
+        img.save(output_file, "png", pnginfo=pnginfo)
         print(f"   PNG: {output_file} (baked with OB2.0 & OB3.0)")
     except Exception as e:
         print(f"⚠️  Failed to bake PNG: {e}")
+
 
 
 

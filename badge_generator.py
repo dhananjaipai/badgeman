@@ -228,9 +228,20 @@ def main():
     private_key_path = sys.argv[9] if len(sys.argv) > 9 else "keys/badge_private_key.pem"
     
     try:
-        # Generate badge definition (unique per achievement)
+        # Download and save image locally
+        Path("images").mkdir(exist_ok=True)
+        image_filename = f"images/{badge_id}.png"
+        req = urllib.request.Request(image_url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=10) as response:
+            with open(image_filename, 'wb') as f:
+                f.write(response.read())
+        
+        # Update image URL to local version
+        local_image_url = f"https://certs.djpai.dev/images/{badge_id}.png"
+        
+        # Generate badge definition (unique per achievement) with local image
         badge_id = str(uuid.uuid4())
-        badge_def = generate_badge_definition(achievement_name, achievement_description, issuer_name, image_url, criteria_narrative, "https://certs.djpai.dev/.well-known/issuer.json")
+        badge_def = generate_badge_definition(achievement_name, achievement_description, issuer_name, local_image_url, criteria_narrative, "https://certs.djpai.dev/.well-known/issuer.json")
         badge_url = f"https://certs.djpai.dev/badges/{badge_id}.json"
         Path("badges").mkdir(exist_ok=True)
         with open(f"badges/{badge_id}.json", 'w') as f:
@@ -246,8 +257,8 @@ def main():
         with open(ob2_file, 'w') as f:
             json.dump(ob2, f, indent=2)
         
-        # Generate & sign OB3.0
-        ob3 = generate_ob3(email, achievement_name, issuer_name, issuer_did, upstream_url, image_url)
+        # Generate & sign OB3.0 with local image URL
+        ob3 = generate_ob3(email, achievement_name, issuer_name, issuer_did, upstream_url, local_image_url)
         ob3_signed = sign_ob3(ob3, private_key_path)
         ob3_id = str(uuid.uuid4())
         
@@ -258,13 +269,14 @@ def main():
         
         # Bake PNG with both credentials
         png_file = f"badges/{ob3_id}.png"
-        bake_badge_png(image_url, ob2, ob3_signed, png_file)
+        bake_badge_png(image_filename, ob2, ob3_signed, png_file)
         
         print(f"✅ Generated badges:")
         print(f"   Badge Def: badges/{badge_id}.json")
         print(f"   OB2.0: {ob2_file}")
         print(f"   OB3.0: {ob3_file} (signed)")
         print(f"   PNG: {png_file} (baked)")
+        print(f"   Image: {image_filename}")
         
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)

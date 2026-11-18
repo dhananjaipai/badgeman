@@ -1,27 +1,50 @@
 # Open Badges Proxy Issuer
 
-Cryptographically signed Open Badges proxy for Credly. Accepts non-compliant upstream credentials (Microsoft Learn, Oracle, Mistral AI) and issues verified badges.
+Cryptographically signed Open Badges proxy for Credly. Issues verified badges for non-compliant upstream credentials (Microsoft Learn, Oracle, Mistral AI, etc.).
 
-## 🎯 Supported Formats
+## 🎯 Why?
 
-- **OB2.0** (IMS Global) - For Credly upload
-- **OB3.0** (W3C Verifiable Credentials) - Self-contained cryptographic signatures
+Platforms like Microsoft Learn, Oracle, and Mistral don't issue compliant Open Badges, so Credly blocks them. This proxy acts as an issuer, cryptographically signing wrapper credentials that point to the upstream link, forcing Credly to accept and verify them.
+
+## ✨ Features
+
+- **Dual Format**: Generates both OB2.0 (Credly) and OB3.0 (W3C) in one command
+- **Automated Signing**: Ed25519 signatures with RDF canonicalization (eddsa-rdfc-2022)
+- **GitHub Actions**: Workflow inputs for one-click badge generation
+- **Self-Verifying**: OB3.0 uses `did:key` (no network lookup needed)
+- **GitHub Pages Hosted**: Zero backend infrastructure required
+
+## 📋 How It Works
+
+```
+Upstream Certificate (e.g., Microsoft Learn)
+        ↓
+   badge_generator.py
+   ├── Generates OB2.0 Assertion
+   │   └── Hash recipient email → assertions/<uuid>.json
+   │
+   └── Generates & Signs OB3.0 Credential
+       ├── Ed25519 signature
+       ├── RDF canonicalization (URDNA2015)
+       └── credentials/<uuid>.json (final signed)
+        ↓
+   Upload to Credly (OB2.0) or verify at badges.badgr.com (OB3.0)
+```
 
 ## 🚀 Quick Start
 
-### Generate Badges (GitHub Actions)
+### GitHub Actions (Recommended)
 
-1. Go to **Actions** → **Generate Open Badges**
-2. Click **Run workflow**
-3. Fill in the inputs:
-   - **Email**: recipient email (lowercase)
-   - **Achievement Name**: Badge title
-   - **Issuer Name**: Organization (e.g., "Microsoft Learn")
-   - **Upstream URL**: Link to original certificate
-   - **Image URL**: Badge image URL (e.g., `https://certs.djpai.dev/badges/images/badge.png`)
-4. Run → Badges generated and committed
+1. **Go to Actions** → **Generate Open Badges** → **Run workflow**
+2. **Fill inputs:**
+   - Email: `user@example.com`
+   - Achievement: `Azure Administrator Associate`
+   - Issuer: `Microsoft Learn`
+   - Upstream URL: `https://learn.microsoft.com/en-us/users/...`
+   - Image URL: `https://certs.djpai.dev/badges/images/badge.png`
+3. **Run** → Badges generated, signed, and committed ✅
 
-### Manual Generation (Local)
+### Local (Manual)
 
 ```bash
 python3 badge_generator.py \
@@ -29,103 +52,119 @@ python3 badge_generator.py \
   "Azure Administrator Associate" \
   "Microsoft Learn" \
   "https://learn.microsoft.com/en-us/users/..." \
-  "https://certs.djpai.dev/badges/images/azure-badge.png"
+  "https://certs.djpai.dev/badges/images/badge.png"
 ```
 
-Outputs:
-- OB2.0: `assertions/<uuid>.json` (ready to upload to Credly)
-- OB3.0: `credentials/<uuid>.json` (unsigned)
-
-### Sign OB3.0 Credentials
-
-```bash
-python3 .github/scripts/sign_ob3_credential.py credentials/<uuid>.json keys/badge_private_key.pem
-```
-
-## 📋 OB2.0 Workflow (Credly Upload)
-
-1. Generate with `badge_generator.py`
-2. Find `assertions/<uuid>.json`
-3. Upload to Credly: Badge Wallet → Other → + Upload Other Badges → Select JSON file
-
-## 🔐 OB3.0 Workflow (W3C Verifiable Credentials)
-
-1. Generate with `badge_generator.py`
-2. Sign with `.github/scripts/sign_ob3_credential.py`
-3. Upload to Credly or verify at: https://badges.badgr.com/public/validate
-
-## 🔑 Cryptography
-
-- **Algorithm**: Ed25519
-- **Signing**: eddsa-rdfc-2022 (RDF canonicalization URDNA2015)
-- **DID**: `did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL`
-- **Public Key**: `.well-known/did.json` and `/.well-known/issuer.json`
+**Output:**
+- `assertions/<uuid>.json` → Upload to Credly
+- `credentials/<uuid>.json` → Verify at https://badges.badgr.com/public/validate
 
 ## 📂 Directory Structure
 
 ```
 .
-├── badge_generator.py                # Unified OB2.0 + OB3.0 generator
+├── badge_generator.py                    # Unified OB2.0 + OB3.0 generator
 ├── .github/
-│   ├── workflows/
-│   │   └── generate-badges.yml       # GitHub Actions workflow
-│   └── scripts/
-│       └── sign_ob3_credential.py    # OB3.0 Ed25519 signer
+│   ├── workflows/generate-badges.yml     # GitHub Actions workflow
+│   └── scripts/sign_ob3_credential.py    # OB3.0 signer (reference)
 ├── .well-known/
-│   ├── did.json                      # DID document with public key
-│   └── issuer.json                   # OB2.0 issuer metadata
+│   └── issuer.json                       # OB2.0 issuer metadata
 ├── keys/
-│   ├── badge_private_key.pem         # Private key (SECRET - in repo secrets)
-│   └── badge_public_key.pem          # Public key
-├── assertions/                       # OB2.0 badges
-├── credentials/                      # OB3.0 badges (unsigned)
-└── badges/
-    ├── images/                       # Badge graphics
-    └── mistral-partner.json          # Badge class template
+│   ├── badge_private_key.pem             # Ed25519 private key (SECRET)
+│   └── badge_public_key.pem              # Public key (reference)
+├── assertions/                           # OB2.0 badges (output)
+└── credentials/                          # OB3.0 badges - signed (output)
 ```
+
+## 🔐 Cryptography
+
+- **Algorithm**: Ed25519 (fastest, most secure for signatures)
+- **Signing**: Data Integrity Proof with eddsa-rdfc-2022 cryptosuite
+- **Canonicalization**: URDNA2015 (RDF N-Quads)
+- **DID Format**: `did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL`
+- **Public Key**: Embedded in DID (no network lookup needed)
+
+## 📤 OB2.0 Workflow (Credly Upload)
+
+1. Generate with `badge_generator.py`
+2. Find `assertions/<uuid>.json`
+3. Upload to Credly:
+   - **Badge Wallet** → **Other** → **+ Upload Other Badges** → Select JSON file
+   - Credly validates against `.well-known/issuer.json`
+   - ✅ Badge appears in wallet
+
+**Note:** Custom issuer badges appear in "Other" tab only (not official transcripts)
+
+## 🔒 OB3.0 Workflow (Verifiable Credentials)
+
+1. Generate & sign with `badge_generator.py`
+2. Find `credentials/<uuid>.json`
+3. Verify at https://badges.badgr.com/public/validate
+4. All 13 tests should pass ✅
 
 ## ⚙️ Configuration
 
-**Email Hashing**: OB2.0 uses SHA256 unsalted hash of lowercase email
-- Must match exactly with Credly account email
-- Example: `dhananjaimvpai@gmail.com` → `sha256$5821a508...`
+### Issuer Metadata (`.well-known/issuer.json`)
 
-**Issuer**: Configure in `.well-known/issuer.json`
-- Name, email, description, logo
+```json
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "id": "https://certs.djpai.dev/.well-known/issuer.json",
+  "type": "Profile",
+  "name": "Your Organization",
+  "email": "contact@example.com",
+  "image": "https://example.com/logo.png",
+  "url": "https://example.com"
+}
+```
 
-**DID**: OB3.0 uses `did:key` format with embedded public key
-- Self-verifiable, no network lookup needed
+### Email Hashing (Critical for Credly)
+
+OB2.0 uses SHA256 hash of **lowercase** email:
+```
+Input:  user@example.com
+Hash:   sha256$<64-char-hex-string>
+```
+
+Must match exactly with Credly account email.
+
+### DID (OB3.0)
+
+Default: `did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL`
+
+Change by passing as argument:
+```bash
+python3 badge_generator.py <email> <name> <issuer> <url> <image> <your-did>
+```
 
 ## 🧪 Testing
 
-**OB2.0**: Upload to Credly → Check wallet
+**OB2.0:**
+1. Generate locally
+2. Upload to Credly
+3. Check wallet (Other tab)
 
-**OB3.0**: https://badges.badgr.com/public/validate
-- Paste credential URL or JSON
-- Should show: ✅ All 13 tests pass
+**OB3.0:**
+1. Generate locally
+2. Host on GitHub Pages or raw.githubusercontent.com
+3. Validate at https://badges.badgr.com/public/validate
+4. Expected: ✅ All 13 tests pass
 
 ## 🛠️ Troubleshooting
 
-### OB2.0 Upload Fails
-- Verify email hash matches Credly account
-- Ensure image URL is accessible
-- Check issuer metadata in `.well-known/issuer.json`
-
-### OB3.0 Signature Invalid
-- Verify Ed25519 private key in `keys/badge_private_key.pem`
-- Check RDF canonicalization: contexts must fetch from real URLs
-- Ensure proof uses base58btc encoding (starts with `z`)
-
-### Cloudflare Cache Issues
-- Purge cache manually in Cloudflare dashboard
-- Or wait 10 minutes for TTL
+| Issue | Solution |
+|-------|----------|
+| Credly upload fails | Email hash doesn't match Credly account. Regenerate with correct email. |
+| Image unreachable | URL must be publicly accessible. Use `https://certs.djpai.dev/badges/images/...` |
+| OB3.0 signature invalid | Ensure `keys/badge_private_key.pem` exists. Check RDF canonicalization. |
+| Cloudflare cache stale | Purge manually in Cloudflare dashboard or wait 10 minutes. |
 
 ## 📚 References
 
 - [Open Badges 2.0 Spec](https://www.imsglobal.org/sites/default/files/Badges/OBv2_0Final.pdf)
 - [Open Badges 3.0 Spec](https://www.imsglobal.org/spec/ob/v3p0/)
 - [W3C Verifiable Credentials](https://www.w3.org/TR/vc-data-model/)
-- [DID Spec](https://www.w3.org/TR/did-core/)
+- [DID Specification](https://www.w3.org/TR/did-core/)
 - [Data Integrity Proofs](https://www.w3.org/TR/vc-data-integrity/)
 
 ## 📄 License

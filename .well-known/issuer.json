@@ -1,7 +1,7 @@
 {
   "@context": "https://w3id.org/openbadges/v2",
   "type": "Profile",
-  "id": "https://certs.djpai.dev",
+  "id": "https://certs.djpai.dev/.well-known/issuer.json",
   "name": "djpai.dev Certificate Proxy",
   "url": "https://certs.djpai.dev",
   "email": "certs@djpai.dev",

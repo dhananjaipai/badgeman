@@ -1,0 +1,18 @@
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "id": "https://certs.djpai.dev/badges/mistral-partner.json",
+  "type": "BadgeClass",
+  "name": "Mistral Studio Partner Learning Certificate",
+  "description": "Credential issued for Mistral Studio Partner Learning Certificate",
+  "image": "https://i.imgur.com/TlV5MtD.png",
+  "issuer": {
+    "id": "https://certs.djpai.dev/.well-known/issuer.json",
+    "type": "Profile",
+    "name": "djpai.dev Certificate Proxy",
+    "url": "https://certs.djpai.dev",
+    "email": "certs@djpai.dev"
+  },
+  "criteria": {
+    "narrative": "Upstream certificate was validated at time of issuance."
+  }
+}

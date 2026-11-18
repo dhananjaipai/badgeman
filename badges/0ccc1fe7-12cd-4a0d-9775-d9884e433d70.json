@@ -3,7 +3,7 @@
     "https://www.w3.org/ns/credentials/v2",
     "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json"
   ],
-  "id": "urn:uuid:448e6539-43c2-4044-8735-e7d954a4dad2",
+  "id": "urn:uuid:0ccc1fe7-12cd-4a0d-9775-d9884e433d70",
   "type": [
     "VerifiableCredential",
     "OpenBadgeCredential"
@@ -16,15 +16,15 @@
     ],
     "name": "Mistral AI"
   },
-  "validFrom": "2026-11-18T16:44:35.109493Z",
-  "issuanceDate": "2026-11-18T16:44:35.110013Z",
+  "validFrom": "2026-11-18T16:48:02.085250Z",
+  "issuanceDate": "2026-11-18T16:48:02.085739Z",
   "credentialSubject": {
     "id": "mailto:dhananjaimvpai@gmail.com",
     "type": [
       "AchievementSubject"
     ],
     "achievement": {
-      "id": "https://certs.djpai.dev/achievements/448e6539-43c2-4044-8735-e7d954a4dad2",
+      "id": "https://certs.djpai.dev/achievements/0ccc1fe7-12cd-4a0d-9775-d9884e433d70",
       "type": [
         "Achievement"
       ],
@@ -52,10 +52,10 @@
     {
       "type": "DataIntegrityProof",
       "cryptosuite": "eddsa-rdfc-2022",
-      "created": "2026-11-18T16:45:22.563423Z",
+      "created": "2026-11-18T16:48:26.553851Z",
       "verificationMethod": "did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL#z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL",
       "proofPurpose": "assertionMethod",
-      "proofValue": "z2UeSK33Gt9pYdnP6ft5vcEJx7gXpQvCJFsWYe4vP3G27UV3b4Fx6XuMThpY8rReTYTV5dWkaU4zehEbc5SQThN9"
+      "proofValue": "z3tqpuSH6YfxehoRpUUuUzAHhQviCPNn7kCK5t1fnKuvTj29zGHaYr4XXu8SpT1eUkHX8tZWPeif7JJSCny9V2ohJ"
     }
   ]
 }

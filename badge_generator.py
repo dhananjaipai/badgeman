@@ -33,7 +33,7 @@ except ImportError:
     HAS_PIL = False
 
 
-def bake_badge_png(image_url: str, ob2_json: dict, ob3_json: dict, output_file: str):
+def bake_badge_png(image_path: str, ob2_json: dict, ob3_json: dict, output_file: str):
     """Bake OB2.0 and OB3.0 JSON into PNG metadata."""
     if not HAS_PIL:
         print(f"⚠️  Skipping PNG baking (PIL not installed)")
@@ -41,14 +41,9 @@ def bake_badge_png(image_url: str, ob2_json: dict, ob3_json: dict, output_file: 
     
     try:
         import io
-        import urllib.request as urlreq
         
-        # Download image from URL
-        req = urlreq.Request(image_url, headers={"User-Agent": "Mozilla/5.0"})
-        with urlreq.urlopen(req, timeout=10) as response:
-            img_data = response.read()
-        
-        img = Image.open(io.BytesIO(img_data))
+        # Open local image file
+        img = Image.open(image_path)
         
         # Store OB2.0 and OB3.0 in image PNG metadata
         metadata = {

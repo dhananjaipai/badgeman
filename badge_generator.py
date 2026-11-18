@@ -210,7 +210,7 @@ def sign_ob3(credential: dict, private_key_path: str) -> dict:
 
 
 def main():
-    if len(sys.argv) < 7:
+    if len(sys.argv) < 8:
         print("Usage: badge_generator.py <email> <achievement_name> <achievement_description> <issuer_name> <criteria_narrative> <upstream_url> <image_url> [issuer_did] [private_key_path]")
         print("\nExample:")
         print('  python3 badge_generator.py "user@example.com" "Azure Admin" "Azure Administrator certification" "Microsoft Learn" "Passed Azure exam" "https://..." "https://certs.djpai.dev/images/badge.png"')

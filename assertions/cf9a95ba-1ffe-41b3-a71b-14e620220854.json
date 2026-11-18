@@ -1,0 +1,15 @@
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "type": "Assertion",
+  "badge": "https://certs.djpai.dev/badges/dab89dca-2466-4c56-bd75-7a2f16267647.json",
+  "issuedOn": "2026-11-18T18:45:41.292564Z",
+  "recipient": {
+    "type": "email",
+    "hashed": true,
+    "identity": "sha256$5821a508838c00def9952bf7c6016d8ff338d43f3ab7de8d02834d7a45b68a94"
+  },
+  "verification": {
+    "type": "hosted"
+  },
+  "id": "https://certs.djpai.dev/assertions/cf9a95ba-1ffe-41b3-a71b-14e620220854.json"
+}

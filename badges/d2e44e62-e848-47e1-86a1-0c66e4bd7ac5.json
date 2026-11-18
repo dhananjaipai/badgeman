@@ -1,0 +1,11 @@
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "type": "BadgeClass",
+  "name": "Mistral Final Test",
+  "description": "Final test with OB2.0 only baking",
+  "image": "https://certs.djpai.dev/images/d2e44e62-e848-47e1-86a1-0c66e4bd7ac5.png",
+  "issuer": "https://certs.djpai.dev/.well-known/issuer.json",
+  "criteria": {
+    "narrative": "Complete test"
+  }
+}

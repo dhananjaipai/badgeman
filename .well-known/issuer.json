@@ -1,10 +1,10 @@
 {
   "@context": "https://w3id.org/openbadges/v2",
-  "type": "Profile",
   "id": "https://certs.djpai.dev/.well-known/issuer.json",
-  "name": "djpai.dev Certificate Proxy",
+  "type": "Profile",
+  "name": "Mistral AI",
   "url": "https://certs.djpai.dev",
   "email": "certs@djpai.dev",
-  "image": "https://i.imgur.com/TlV5MtD.png",
-  "description": "Open Badges proxy issuer for upstream certificate validation and Credly compatibility"
+  "description": "Open Badges proxy issuer for upstream certificate validation and Credly compatibility",
+  "image": "https://certs.djpai.dev/badges/images/mistral_badge.png"
 }

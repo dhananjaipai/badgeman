@@ -1,0 +1,16 @@
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "id": "https://certs.djpai.dev/assertions/mistral_assertion_v10.json",
+  "type": "Assertion",
+  "badge": "https://certs.djpai.dev/badges/mistral-partner.json",
+  "issuedOn": "2026-11-17T22:00:00Z",
+  "recipient": {
+    "type": "email",
+    "hashed": true,
+    "identity": "sha256$b39cfb1ce14f7bcf22fa930616b993bcc67837c88d66484d4922ec1ee1049345",
+    "salt": "d5e38248b804c58c9412b6eee88a08ed"
+  },
+  "verification": {
+    "type": "HostedBadge"
+  }
+}

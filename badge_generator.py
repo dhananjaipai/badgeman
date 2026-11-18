@@ -32,8 +32,8 @@ except ImportError:
     HAS_PIL = False
 
 
-def bake_badge_png(image_path: str, ob2_json: dict, ob3_json: dict, output_file: str):
-    """Bake OB2.0 and OB3.0 JSON into PNG metadata."""
+def bake_badge_png(image_path: str, ob2_json: dict, output_file: str):
+    """Bake OB2.0 assertion JSON into PNG metadata."""
     if not HAS_PIL:
         print(f"⚠️  Skipping PNG baking (PIL not installed)")
         return
@@ -45,20 +45,16 @@ def bake_badge_png(image_path: str, ob2_json: dict, ob3_json: dict, output_file:
         # Open local image file
         img = Image.open(image_path)
         
-        # Store OB2.0 and OB3.0 in image PNG metadata
-        metadata = {
-            "ob2": json.dumps(ob2_json, separators=(',', ':')),
-            "ob3": json.dumps(ob3_json, separators=(',', ':'))
-        }
+        # Store ONLY OB2.0 in image PNG metadata
+        ob2_json_str = json.dumps(ob2_json, separators=(',', ':'))
         
-        # Create PNG info with metadata
+        # Create PNG info with OB2.0 metadata
         pnginfo = PngImagePlugin.PngInfo()
-        pnginfo.add_text("ob2", metadata["ob2"])
-        pnginfo.add_text("ob3", metadata["ob3"])
+        pnginfo.add_text("ob2", ob2_json_str)
         
-        # Save with metadata
+        # Save with OB2.0 metadata
         img.save(output_file, "png", pnginfo=pnginfo)
-        print(f"   PNG: {output_file} (baked with OB2.0 & OB3.0)")
+        print(f"   PNG: {output_file} (baked with OB2.0)")
     except Exception as e:
         print(f"⚠️  Failed to bake PNG: {e}")
         import traceback
@@ -261,9 +257,9 @@ def main():
         with open(ob3_file, 'w') as f:
             json.dump(ob3_signed, f, indent=2)
         
-        # Bake PNG with both credentials
+        # Bake PNG with OB2.0
         png_file = f"badges/{ob3_id}.png"
-        bake_badge_png(image_filename, ob2, ob3_signed, png_file)
+        bake_badge_png(image_filename, ob2, png_file)
         
         print(f"✅ Generated badges:")
         print(f"   Badge Def: badges/{badge_id}.json")

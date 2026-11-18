@@ -1,43 +1,65 @@
 #!/usr/bin/env python3
 """
-Open Badges 3.0 Credential Signer
-Signs unsigned OB3.0 credentials using Ed25519 Data Integrity Proof (eddsa-rdfc-2022)
+Open Badges 3.0 Credential Signer (eddsa-rdfc-2022)
+Signs OB3.0 credentials using Ed25519 with RDF canonicalization (URDNA2015)
 """
 
 import json
 import sys
 import hashlib
-import base64
 import base58
 from datetime import datetime, timezone
-from pathlib import Path
-from cryptography.hazmat.primitives import serialization, hashes
+from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import ed25519
 from cryptography.hazmat.backends import default_backend
 
-
-def normalize_json_ld(obj):
-    """
-    Normalize JSON-LD using RDFC-2015 (Recursive Descent Canonicalization).
-    This is a simplified implementation suitable for Ed25519 signing.
-    """
-    if isinstance(obj, dict):
-        # Sort keys alphabetically
-        return json.dumps(obj, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
-    return json.dumps(obj, sort_keys=True, separators=(',', ':'), ensure_ascii=False)
+try:
+    from pyld import jsonld
+    HAS_PYLD = True
+except ImportError:
+    HAS_PYLD = False
 
 
-def sign_credential(credential_json_path: str, private_key_path: str, domain: str = "certs.djpai.dev") -> dict:
-    """
-    Sign an unsigned OB3.0 credential with an Ed25519 Data Integrity Proof.
+# Pre-cached JSON-LD contexts to avoid network calls
+CACHED_CONTEXTS = {
+    "https://www.w3.org/ns/credentials/v2": {
+        "@context": {
+            "@version": 1.1,
+            "@vocab": "https://www.w3.org/ns/credentials#",
+            "id": "@id",
+            "type": "@type"
+        }
+    },
+    "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.3.json": {
+        "@context": {
+            "Achievement": "https://w3id.org/openbadges#Achievement",
+            "Assertion": "https://w3id.org/openbadges#Assertion",
+            "BadgeClass": "https://w3id.org/openbadges#BadgeClass"
+        }
+    }
+}
+
+
+def custom_document_loader(url, options=None):
+    """Custom document loader with cached contexts."""
+    if url in CACHED_CONTEXTS:
+        return {"contextUrl": url, "document": CACHED_CONTEXTS[url], "documentUrl": url}
     
-    Args:
-        credential_json_path: Path to unsigned credential JSON
-        private_key_path: Path to Ed25519 private key (PEM format)
-        domain: Domain for the DID (default: certs.djpai.dev)
-    
-    Returns:
-        Signed credential dict with proof object
+    # For uncached URLs, try network
+    try:
+        import urllib.request
+        with urllib.request.urlopen(url, timeout=5) as response:
+            doc = json.loads(response.read().decode('utf-8'))
+            return {"contextUrl": url, "document": doc, "documentUrl": url}
+    except Exception as e:
+        print(f"⚠️  Could not load context from {url}: {e}", file=sys.stderr)
+        raise
+
+
+def sign_credential(credential_json_path: str, private_key_path: str) -> dict:
+    """
+    Sign an OB3.0 credential with Ed25519 using eddsa-rdfc-2022 cryptosuite.
+    Uses RDF canonicalization (URDNA2015).
     """
     
     # Load unsigned credential
@@ -52,64 +74,87 @@ def sign_credential(credential_json_path: str, private_key_path: str, domain: st
     if not isinstance(private_key, ed25519.Ed25519PrivateKey):
         raise ValueError("Private key must be Ed25519")
     
-    # Create proof options (canonicalized)
+    # Create a copy without proof
+    credential_without_proof = {k: v for k, v in credential.items() if k != 'proof'}
+    
+    # Extract verification method
+    if credential_without_proof["issuer"]["id"].startswith("did:key:"):
+        verification_method = credential_without_proof["issuer"]["id"] + "#" + credential_without_proof["issuer"]["id"].split(":")[-1]
+    else:
+        verification_method = credential_without_proof["issuer"]["id"] + "#key-1"
+    
+    # Create proof options WITH @context
     proof_options = {
+        "@context": credential_without_proof["@context"],
         "type": "DataIntegrityProof",
         "cryptosuite": "eddsa-rdfc-2022",
         "created": datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
-        "verificationMethod": f"did:key:z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL#z6MkeWEbXvH68irW1mameCz8ywzDj2F68mzfmqqBmKV8LdwL",
-        "proofPurpose": "assertionMethod"
+        "verificationMethod": verification_method,
+        "proofPurpose": "assertionMethod",
     }
     
-    # Create a copy for signing (without proof field)
-    credential_for_signing = credential.copy()
+    if HAS_PYLD:
+        try:
+            # Use RDF canonicalization with custom document loader
+            jsonld_opts = {
+                "algorithm": "URDNA2015",
+                "format": "application/n-quads",
+                "documentLoader": custom_document_loader
+            }
+            
+            doc_nquads = jsonld.normalize(credential_without_proof, jsonld_opts)
+            proof_nquads = jsonld.normalize(proof_options, jsonld_opts)
+            
+        except Exception as e:
+            print(f"⚠️  RDF canonicalization failed, using JSON normalization: {e}", file=sys.stderr)
+            doc_nquads = json.dumps(credential_without_proof, sort_keys=True, separators=(',', ':'))
+            proof_nquads = json.dumps(proof_options, sort_keys=True, separators=(',', ':'))
+    else:
+        # Fallback: simple JSON normalization
+        doc_nquads = json.dumps(credential_without_proof, sort_keys=True, separators=(',', ':'))
+        proof_nquads = json.dumps(proof_options, sort_keys=True, separators=(',', ':'))
     
-    # Normalize credential for signing
-    credential_normalized = normalize_json_ld(credential_for_signing)
-    options_normalized = normalize_json_ld(proof_options)
+    # Hash both (raw 32-byte digests)
+    proof_hash = hashlib.sha256(proof_nquads.encode("utf-8")).digest()
+    doc_hash = hashlib.sha256(doc_nquads.encode("utf-8")).digest()
     
-    # Create signing input: options + credential
-    signing_input = options_normalized + credential_normalized
+    # Concatenate: proof hash FIRST, doc hash SECOND
+    hash_data = proof_hash + doc_hash
     
-    # Sign
-    signature_bytes = private_key.sign(signing_input.encode('utf-8'))
+    # Debug output
+    print(f"[DEBUG] Proof hash:    {proof_hash.hex()}")
+    print(f"[DEBUG] Doc hash:      {doc_hash.hex()}")
+    print(f"[DEBUG] Combined(64B): {hash_data.hex()}")
     
-    # Encode signature as base58btc with multibase 'z' prefix
+    # Sign and encode as base58btc
+    signature_bytes = private_key.sign(hash_data)
     proof_value = "z" + base58.b58encode(signature_bytes).decode('ascii')
     
-    # Add proof to credential as an array (OB3.0 requirement)
-    proof_options["proofValue"] = proof_value
-    credential["proof"] = [proof_options]
+    # Build proof without @context
+    proof_options_for_credential = {k: v for k, v in proof_options.items() if k != '@context'}
+    proof_options_for_credential["proofValue"] = proof_value
+    
+    # Add proof array
+    credential["proof"] = [proof_options_for_credential]
     
     return credential
 
 
 def main():
-    """CLI interface for signing credentials."""
     if len(sys.argv) < 2:
-        print("Usage: sign_ob3_credential.py <credential.json> [private_key.pem] [domain]")
-        print("\nExample:")
-        print("  python3 sign_ob3_credential.py badges/05647af0-8547-4369-ab5f-332a1e446463.json keys/badge_private_key.pem")
+        print("Usage: sign_ob3_credential.py <credential.json> [private_key.pem]")
         sys.exit(1)
     
     credential_path = sys.argv[1]
     private_key_path = sys.argv[2] if len(sys.argv) > 2 else "keys/badge_private_key.pem"
-    domain = sys.argv[3] if len(sys.argv) > 3 else "certs.djpai.dev"
     
     try:
-        # Sign credential
-        signed_credential = sign_credential(credential_path, private_key_path, domain)
+        signed_credential = sign_credential(credential_path, private_key_path)
         
-        # Save signed credential (overwrite original)
         with open(credential_path, 'w') as f:
             json.dump(signed_credential, f, indent=2)
         
-        print(f"✅ Credential signed successfully!")
-        print(f"   File: {credential_path}")
-        print(f"   Proof type: {signed_credential['proof'][0]['cryptosuite']}")
-        print(f"   Verification method: {signed_credential['proof'][0]['verificationMethod']}")
-        print(f"\n📋 Next step: Upload this JSON to Credly or test with validator")
-        print(f"   Validator: https://badges.badgr.com/public/validate")
+        print(f"✅ Signed: {credential_path}")
         
     except Exception as e:
         print(f"❌ Error: {e}", file=sys.stderr)

@@ -3,10 +3,6 @@ name: Generate Open Badges (OB2.0 & OB3.0)
 on:
   workflow_dispatch:
     inputs:
-      email:
-        description: 'Recipient email (lowercase)'
-        required: true
-        type: string
       achievement_name:
         description: 'Badge achievement name'
         required: true
@@ -36,6 +32,11 @@ jobs:
         with:
           python-version: '3.11'
       
+      - name: Restore private key
+        run: |
+          mkdir -p keys
+          echo "${{ secrets.BADGE_SIGNING_KEY }}" > keys/badge_private_key.pem
+      
       - name: Install dependencies
         run: |
           pip install -q pyld cryptography base58
@@ -43,7 +44,7 @@ jobs:
       - name: Generate & sign badges
         run: |
           python3 badge_generator.py \
-            "${{ github.event.inputs.email }}" \
+            "${{ secrets.PERSONAL_EMAIL }}" \
             "${{ github.event.inputs.achievement_name }}" \
             "${{ github.event.inputs.issuer_name }}" \
             "${{ github.event.inputs.upstream_url }}" \

@@ -223,6 +223,9 @@ def main():
     private_key_path = sys.argv[9] if len(sys.argv) > 9 else "keys/badge_private_key.pem"
     
     try:
+        # Generate badge definition ID (unique per achievement)
+        badge_id = str(uuid.uuid4())
+        
         # Download and save image locally
         Path("images").mkdir(exist_ok=True)
         image_filename = f"images/{badge_id}.png"
@@ -235,7 +238,6 @@ def main():
         local_image_url = f"https://certs.djpai.dev/images/{badge_id}.png"
         
         # Generate badge definition (unique per achievement) with local image
-        badge_id = str(uuid.uuid4())
         badge_def = generate_badge_definition(achievement_name, achievement_description, issuer_name, local_image_url, criteria_narrative, "https://certs.djpai.dev/.well-known/issuer.json")
         badge_url = f"https://certs.djpai.dev/badges/{badge_id}.json"
         Path("badges").mkdir(exist_ok=True)

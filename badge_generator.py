@@ -33,7 +33,7 @@ except ImportError:
 
 
 def bake_badge_png(image_path: str, ob2_json: dict, output_file: str):
-    """Bake OB2.0 assertion JSON into PNG metadata."""
+    """Bake OB2.0 assertion JSON into PNG metadata with standard key 'openbadges'."""
     if not HAS_PIL:
         print(f"⚠️  Skipping PNG baking (PIL not installed)")
         return
@@ -45,12 +45,12 @@ def bake_badge_png(image_path: str, ob2_json: dict, output_file: str):
         # Open local image file
         img = Image.open(image_path)
         
-        # Store ONLY OB2.0 in image PNG metadata
+        # Store OB2.0 with standard 'openbadges' key
         ob2_json_str = json.dumps(ob2_json, separators=(',', ':'))
         
-        # Create PNG info with OB2.0 metadata
+        # Create PNG info with standard Open Badges key
         pnginfo = PngImagePlugin.PngInfo()
-        pnginfo.add_text("ob2", ob2_json_str)
+        pnginfo.add_text("openbadges", ob2_json_str)
         
         # Save with OB2.0 metadata
         img.save(output_file, "png", pnginfo=pnginfo)

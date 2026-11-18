@@ -1,0 +1,12 @@
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "type": "BadgeClass",
+  "id": "https://certs.djpai.dev/badges/0ca22a17-d52d-4a0a-93d5-461637bf84f3.json",
+  "name": "Valid Test",
+  "description": "With proper badge definition id",
+  "image": "https://certs.djpai.dev/images/0ca22a17-d52d-4a0a-93d5-461637bf84f3.png",
+  "issuer": "https://certs.djpai.dev/.well-known/issuer.json",
+  "criteria": {
+    "narrative": "Test"
+  }
+}

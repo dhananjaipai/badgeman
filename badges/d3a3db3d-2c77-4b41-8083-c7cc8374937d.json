@@ -1,0 +1,11 @@
+{
+  "@context": "https://w3id.org/openbadges/v2",
+  "type": "BadgeClass",
+  "name": "Test Badge",
+  "description": "Test",
+  "image": "https://certs.djpai.dev/images/d3a3db3d-2c77-4b41-8083-c7cc8374937d.png",
+  "issuer": "https://certs.djpai.dev/.well-known/issuer.json",
+  "criteria": {
+    "narrative": "Test"
+  }
+}

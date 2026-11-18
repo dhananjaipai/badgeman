@@ -72,12 +72,12 @@ def custom_document_loader(url, options=None):
     return {"contextUrl": None, "documentUrl": url, "document": _CONTEXT_CACHE[url]}
 
 
-def generate_ob2(email: str, issuer_url: str, achievement_name: str, badge_url: str) -> dict:
+def generate_ob2(email: str, issuer_url: str, achievement_name: str, badge_url: str, upstream_url: str = None) -> dict:
     """Generate OB2.0 assertion."""
     email_lower = email.lower()
     email_hash = hashlib.sha256(email_lower.encode()).hexdigest()
     
-    return {
+    assertion = {
         "@context": "https://w3id.org/openbadges/v2",
         "type": "Assertion",
         "badge": badge_url,
@@ -89,6 +89,18 @@ def generate_ob2(email: str, issuer_url: str, achievement_name: str, badge_url: 
         },
         "verification": {"type": "hosted"}
     }
+    
+    # Add evidence if upstream URL provided
+    if upstream_url:
+        assertion["evidence"] = [
+            {
+                "id": upstream_url,
+                "name": "Upstream Certificate",
+                "narrative": "Original certificate from upstream provider"
+            }
+        ]
+    
+    return assertion
 
 
 def generate_badge_definition(achievement_name: str, achievement_description: str, issuer_name: str, image_url: str, criteria_narrative: str, issuer_url: str, badge_id: str) -> dict:
@@ -240,8 +252,8 @@ def main():
         # Get badge URL from the definition
         badge_url = badge_def["id"]
         
-        # Generate OB2.0
-        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json", achievement_name, badge_url)
+        # Generate OB2.0 with upstream evidence
+        ob2 = generate_ob2(email, "https://certs.djpai.dev/.well-known/issuer.json", achievement_name, badge_url, upstream_url)
         ob2_id = str(uuid.uuid4())
         ob2["id"] = f"https://certs.djpai.dev/assertions/{ob2_id}.json"
         

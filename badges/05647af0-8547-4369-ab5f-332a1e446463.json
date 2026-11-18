@@ -1,0 +1,56 @@
+{
+  "@context": [
+    "https://www.w3.org/2018/credentials/v1",
+    "https://purl.imsglobal.org/spec/ob/v3p0/context-3.0.2.json"
+  ],
+  "id": "urn:uuid:05647af0-8547-4369-ab5f-332a1e446463",
+  "type": [
+    "VerifiableCredential",
+    "OpenBadgeCredential"
+  ],
+  "issuer": {
+    "id": "did:web:certs.djpai.dev",
+    "type": [
+      "Profile"
+    ],
+    "name": "Mistral AI"
+  },
+  "validFrom": "2026-11-18T16:15:21.326960Z",
+  "credentialSubject": {
+    "id": "mailto:dhananjaimvpai@gmail.com",
+    "type": [
+      "AchievementSubject"
+    ],
+    "achievement": {
+      "id": "https://certs.djpai.dev/achievements/05647af0-8547-4369-ab5f-332a1e446463",
+      "type": [
+        "Achievement"
+      ],
+      "name": "Mistral Studio Partner Learning Certificate",
+      "image": {
+        "id": "https://certs.djpai.dev/badges/images/mistral_badge.png",
+        "type": "Image"
+      },
+      "criteria": {
+        "narrative": "Upstream certificate was validated at time of issuance."
+      }
+    }
+  },
+  "evidence": [
+    {
+      "id": "https://www.mistral.ai/partners/",
+      "type": [
+        "Evidence"
+      ],
+      "name": "Original Upstream Mistral AI Certificate"
+    }
+  ],
+  "proof": {
+    "type": "DataIntegrityProof",
+    "cryptosuite": "eddsa-rdfc-2022",
+    "created": "2026-11-18T16:16:02.281709Z",
+    "verificationMethod": "did:web:certs.djpai.dev#key-1",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "hJ+ON3feScWPOkV4fEgDoUopTiCjdfXfvl6z/QKyfBcP2GuBKBYv5KkX1OXutKWU+OFP8r1sTjLwuOKeKRYgAw=="
+  }
+}

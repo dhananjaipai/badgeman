@@ -245,6 +245,20 @@ def main():
         with open(ob2_file, 'w') as f:
             json.dump(ob2, f, indent=2)
         
+        # Generate & sign OB3.0
+        ob3 = generate_ob3(email, achievement_name, issuer_name, issuer_did, upstream_url, image_url)
+        ob3_signed = sign_ob3(ob3, private_key_path)
+        ob3_id = str(uuid.uuid4())
+        
+        Path("credentials").mkdir(exist_ok=True)
+        ob3_file = f"credentials/{ob3_id}.json"
+        with open(ob3_file, 'w') as f:
+            json.dump(ob3_signed, f, indent=2)
+        
+        # Bake PNG with both credentials
+        png_file = f"badges/{ob3_id}.png"
+        bake_badge_png(image_url, ob2, ob3_signed, png_file)
+        
         print(f"✅ Generated badges:")
         print(f"   Badge Def: badges/{badge_id}.json")
         print(f"   OB2.0: {ob2_file}")
